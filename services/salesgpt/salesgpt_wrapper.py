@@ -53,9 +53,9 @@ class SalesGPTWrapper:
         self,
         email_body: str,
         conversation_history: List[str]
-    ) -> Literal["interested", "objection", "curious", "neutral", "not_interested"]:
+    ) -> Literal["interested", "demo_request", "trial_request", "pricing_question", "objection", "curious", "neutral", "not_interested"]:
         """
-        Classify email intent based on content.
+        Classify email intent based on content - SaaS-specific intents.
         
         Args:
             email_body: Email body text
@@ -64,26 +64,34 @@ class SalesGPTWrapper:
         Returns:
             Intent classification
         """
-        # Use SalesGPT to analyze intent
-        # In a real implementation, you'd use a separate classification chain
-        # For now, simple keyword-based classification
-        
         body_lower = email_body.lower()
         
-        # Positive indicators
-        if any(word in body_lower for word in ["yes", "interested", "tell me more", "schedule", "book", "call"]):
+        # Demo request indicators
+        if any(word in body_lower for word in ["demo", "show me", "see how it works", "demonstration", "walkthrough"]):
+            return "demo_request"
+        
+        # Trial request indicators
+        if any(word in body_lower for word in ["trial", "try it", "test", "free trial", "sign up"]):
+            return "trial_request"
+        
+        # Pricing question indicators
+        if any(word in body_lower for word in ["price", "cost", "pricing", "how much", "pricing plans", "subscription"]):
+            return "pricing_question"
+        
+        # Positive indicators (interested but not specific)
+        if any(word in body_lower for word in ["yes", "interested", "tell me more", "schedule", "book", "call", "sounds good"]):
             return "interested"
         
         # Objection indicators
-        if any(word in body_lower for word in ["expensive", "cost", "price", "budget", "can't afford", "too much"]):
+        if any(word in body_lower for word in ["expensive", "can't afford", "too much", "budget", "not in budget"]):
             return "objection"
         
         # Curious indicators
-        if any(word in body_lower for word in ["how", "what", "explain", "more info", "details"]):
+        if any(word in body_lower for word in ["how", "what", "explain", "more info", "details", "how does it work"]):
             return "curious"
         
         # Negative indicators
-        if any(word in body_lower for word in ["not interested", "unsubscribe", "remove", "stop"]):
+        if any(word in body_lower for word in ["not interested", "unsubscribe", "remove", "stop", "don't contact"]):
             return "not_interested"
         
         return "neutral"
@@ -131,14 +139,20 @@ class SalesGPTWrapper:
             evidence_text = self._format_evidence(evidence_data)
             reply_body = f"{reply_body}\n\n{evidence_text}"
         
-        # Determine action based on intent
+        # Determine action based on intent - SaaS-specific
         action = "none"
-        if intent == "interested":
-            action = "send_booking_link"
+        if intent == "demo_request":
+            action = "send_demo_link"
+        elif intent == "trial_request":
+            action = "send_trial_link"
+        elif intent == "pricing_question":
+            action = "send_pricing_info"
+        elif intent == "interested":
+            action = "send_demo_link"
         elif intent == "objection":
-            action = "send_evidence"
+            action = "send_evidence_and_roi"
         elif intent == "curious":
-            action = "provide_info"
+            action = "provide_info_and_evidence"
         
         return {
             "body": reply_body,
@@ -163,7 +177,8 @@ class SalesGPTWrapper:
         return (
             f"Quick insight: Your clinic shows {abs(delta)}% "
             f"{'more' if delta > 0 else 'less'} visibility than {competitor} "
-            f"in GPT-based patient searches. I can show you the full audit "
+            f"in AI-powered patient searches. Our knowledge graph publishing feature "
+            f"can help you actively raise your AI visibility. I can show you how it works "
             f"on a short call."
         )
     

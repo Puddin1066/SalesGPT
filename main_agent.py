@@ -196,13 +196,11 @@ class ASSCHOrchestrator:
         if campaign_id:
             subject = os.getenv(
                 "SMARTLEAD_INITIAL_SUBJECT",
-                "Quick question about your clinic's visibility"
+                "Quick question about {{clinic_name}}'s AI visibility"
             )
             body = os.getenv(
                 "SMARTLEAD_INITIAL_BODY",
-                "Hi {{first_name}},\n\nI noticed {{clinic_name}} and wanted to share "
-                "something that might interest you.\n\nWould you be open to a "
-                "brief conversation?\n\nBest,\n{{from_name}}"
+                "Hi {{first_name}},\n\nI noticed {{clinic_name}} specializes in {{specialty}} and thought you might be interested in how our AI visibility platform helps similar clinics:\n\n• Publish your clinic to knowledge graphs to actively raise AI visibility\n• Improve discoverability in AI-powered patient searches (ChatGPT, Google AI, etc.)\n• See how you compare to competitors in your area\n• Get actionable insights to boost patient acquisition\n\nWould you be open to a quick 15-min demo?\n\nBest,\n{{from_name}}"
             )
             
             self.smartlead.add_sequence(
@@ -215,13 +213,11 @@ class ASSCHOrchestrator:
             # Add follow-up sequence
             followup_subject = os.getenv(
                 "SMARTLEAD_FOLLOWUP_SUBJECT",
-                "Following up on visibility"
+                "Following up on AI visibility for {{clinic_name}}"
             )
             followup_body = os.getenv(
                 "SMARTLEAD_FOLLOWUP_BODY",
-                "Hi {{first_name}},\n\nJust wanted to follow up on my previous message. "
-                "I'd love to show you how we can improve {{clinic_name}}'s patient "
-                "acquisition.\n\nBest,\n{{from_name}}"
+                "Hi {{first_name}},\n\nJust wanted to follow up. Our AI visibility platform helps clinics like {{clinic_name}} actively raise their AI visibility through knowledge graph publishing, understand their competitive positioning, and improve patient discovery.\n\nI can show you a quick demo of how knowledge graph publishing works - would 15 minutes this week work?\n\nBest,\n{{from_name}}"
             )
             
             self.smartlead.add_sequence(
@@ -275,9 +271,73 @@ class ASSCHOrchestrator:
         
         print(f"🎯 Intent: {intent}")
         
-        # Handle based on intent
-        if intent == "interested":
-            # Send booking link
+        # Handle based on intent - SaaS-specific flows
+        if intent == "demo_request":
+            # Send demo booking link
+            booking_link = self.scheduler.get_booking_link(
+                lead_name=sender_name,
+                lead_email=sender_email
+            )
+            demo_message = (
+                f"Great! I'd love to show you how our AI visibility platform works. "
+                f"Please book a time that works for you:\n\n{booking_link}\n\n"
+                f"During the demo, I'll show you:\n"
+                f"• How knowledge graph publishing actively raises your AI visibility\n"
+                f"• Your clinic's current visibility score\n"
+                f"• How you compare to competitors\n"
+                f"• Actionable insights to improve patient discovery\n\n"
+                f"Looking forward to speaking with you!"
+            )
+            reply_body = f"{reply_body}\n\n{demo_message}"
+            
+            # Update HubSpot to "demo_scheduled"
+            if lead_state and lead_state.get("hubspot_contact_id"):
+                self.crm.update_pipeline_stage(
+                    lead_state["hubspot_contact_id"],
+                    "demo_scheduled"
+                )
+            
+            self.state.set_lead_status(sender_email, "demo_scheduled")
+            
+        elif intent == "trial_request":
+            # Send trial link (if you have a trial system)
+            trial_link = os.getenv("TRIAL_SIGNUP_LINK", "")
+            if trial_link:
+                trial_message = (
+                    f"Perfect! You can start a free trial here: {trial_link}\n\n"
+                    f"The trial includes:\n"
+                    f"• Full visibility audit\n"
+                    f"• Competitor comparison\n"
+                    f"• Actionable recommendations\n\n"
+                    f"I'll follow up in a few days to see how it's going!"
+                )
+                reply_body = f"{reply_body}\n\n{trial_message}"
+            else:
+                # Fallback to demo if no trial link
+                booking_link = self.scheduler.get_booking_link(
+                    lead_name=sender_name,
+                    lead_email=sender_email
+                )
+                reply_body = f"{reply_body}\n\nI'd love to show you how it works in a demo. Book a time here: {booking_link}"
+            
+            self.state.set_lead_status(sender_email, "trial")
+            
+        elif intent == "pricing_question":
+            # Send pricing information
+            pricing_page = os.getenv("PRICING_PAGE_URL", "")
+            pricing_message = (
+                f"Great question! Our AI visibility platform is priced based on clinic size and needs. "
+                f"You can see our pricing here: {pricing_page if pricing_page else 'our website'}\n\n"
+                f"Most clinics see ROI within 30-60 days through knowledge graph publishing and "
+                f"increased patient discovery. "
+                f"I'm happy to discuss which plan would work best for {{clinic_name}} - would a quick call work?"
+            )
+            reply_body = f"{reply_body}\n\n{pricing_message}"
+            
+            self.state.set_lead_status(sender_email, "pricing_discussion")
+            
+        elif intent == "interested":
+            # Send demo booking link
             booking_link = self.scheduler.get_booking_link(
                 lead_name=sender_name,
                 lead_email=sender_email
@@ -285,17 +345,17 @@ class ASSCHOrchestrator:
             confirmation = self.scheduler.generate_confirmation_message(booking_link)
             reply_body = f"{reply_body}\n\n{confirmation}"
             
-            # Update HubSpot to "booked"
+            # Update HubSpot to "demo_scheduled"
             if lead_state and lead_state.get("hubspot_contact_id"):
                 self.crm.update_pipeline_stage(
                     lead_state["hubspot_contact_id"],
-                    "booked"
+                    "demo_scheduled"
                 )
             
-            self.state.set_lead_status(sender_email, "booked")
+            self.state.set_lead_status(sender_email, "demo_scheduled")
             
         elif intent in ["curious", "neutral"]:
-            # Inject GEMflush evidence
+            # Inject GEMflush evidence (AI visibility insights)
             if clinic_name:
                 competitor = os.getenv("DEFAULT_COMPETITOR", "local competitors")
                 evidence = self.visibility.get_competitor_comparison(
@@ -310,7 +370,7 @@ class ASSCHOrchestrator:
             self.state.set_lead_status(sender_email, "engaged")
             
         elif intent == "objection":
-            # Handle objection with evidence
+            # Handle objection with evidence + ROI focus
             if clinic_name:
                 competitor = os.getenv("DEFAULT_COMPETITOR", "local competitors")
                 evidence = self.visibility.get_competitor_comparison(
@@ -323,7 +383,14 @@ class ASSCHOrchestrator:
                         evidence,
                         include_full_audit=True
                     )
-                    reply_body = f"{reply_body}\n\n{evidence_text}"
+                    # Add ROI context for pricing objections
+                    roi_message = (
+                        f"\n\nMost clinics see a 15-30% increase in patient discovery within "
+                        f"the first 60 days through knowledge graph publishing, which typically "
+                        f"pays for the platform many times over. "
+                        f"I'd be happy to show you a quick ROI calculation - would that help?"
+                    )
+                    reply_body = f"{reply_body}\n\n{evidence_text}{roi_message}"
             
             self.state.set_lead_status(sender_email, "engaged")
         
