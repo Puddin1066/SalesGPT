@@ -200,7 +200,7 @@ class ASSCHOrchestrator:
             )
             body = os.getenv(
                 "SMARTLEAD_INITIAL_BODY",
-                "Hi {{first_name}},\n\nI noticed {{clinic_name}} specializes in {{specialty}} and thought you might be interested in how our AI visibility platform helps similar clinics:\n\n• Improve discoverability in AI-powered patient searches\n• See how you compare to competitors in your area\n• Get actionable insights to boost patient acquisition\n\nWould you be open to a quick 15-min demo?\n\nBest,\n{{from_name}}"
+                "Hi {{first_name}},\n\nI noticed {{clinic_name}} specializes in {{specialty}} and thought you might be interested in how our AI visibility platform helps similar clinics:\n\n• Publish your clinic to knowledge graphs to actively raise AI visibility\n• Improve discoverability in AI-powered patient searches (ChatGPT, Google AI, etc.)\n• See how you compare to competitors in your area\n• Get actionable insights to boost patient acquisition\n\nWould you be open to a quick 15-min demo?\n\nBest,\n{{from_name}}"
             )
             
             self.smartlead.add_sequence(
@@ -217,7 +217,7 @@ class ASSCHOrchestrator:
             )
             followup_body = os.getenv(
                 "SMARTLEAD_FOLLOWUP_BODY",
-                "Hi {{first_name}},\n\nJust wanted to follow up. Our AI visibility platform helps clinics like {{clinic_name}} understand their competitive positioning and improve patient discovery.\n\nI can show you a quick demo of how it works - would 15 minutes this week work?\n\nBest,\n{{from_name}}"
+                "Hi {{first_name}},\n\nJust wanted to follow up. Our AI visibility platform helps clinics like {{clinic_name}} actively raise their AI visibility through knowledge graph publishing, understand their competitive positioning, and improve patient discovery.\n\nI can show you a quick demo of how knowledge graph publishing works - would 15 minutes this week work?\n\nBest,\n{{from_name}}"
             )
             
             self.smartlead.add_sequence(
@@ -282,6 +282,7 @@ class ASSCHOrchestrator:
                 f"Great! I'd love to show you how our AI visibility platform works. "
                 f"Please book a time that works for you:\n\n{booking_link}\n\n"
                 f"During the demo, I'll show you:\n"
+                f"• How knowledge graph publishing actively raises your AI visibility\n"
                 f"• Your clinic's current visibility score\n"
                 f"• How you compare to competitors\n"
                 f"• Actionable insights to improve patient discovery\n\n"
@@ -327,7 +328,8 @@ class ASSCHOrchestrator:
             pricing_message = (
                 f"Great question! Our AI visibility platform is priced based on clinic size and needs. "
                 f"You can see our pricing here: {pricing_page if pricing_page else 'our website'}\n\n"
-                f"Most clinics see ROI within 30-60 days through increased patient discovery. "
+                f"Most clinics see ROI within 30-60 days through knowledge graph publishing and "
+                f"increased patient discovery. "
                 f"I'm happy to discuss which plan would work best for {{clinic_name}} - would a quick call work?"
             )
             reply_body = f"{reply_body}\n\n{pricing_message}"
@@ -384,7 +386,8 @@ class ASSCHOrchestrator:
                     # Add ROI context for pricing objections
                     roi_message = (
                         f"\n\nMost clinics see a 15-30% increase in patient discovery within "
-                        f"the first 60 days, which typically pays for the platform many times over. "
+                        f"the first 60 days through knowledge graph publishing, which typically "
+                        f"pays for the platform many times over. "
                         f"I'd be happy to show you a quick ROI calculation - would that help?"
                     )
                     reply_body = f"{reply_body}\n\n{evidence_text}{roi_message}"

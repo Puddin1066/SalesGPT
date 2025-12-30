@@ -177,7 +177,8 @@ class SalesGPTWrapper:
         return (
             f"Quick insight: Your clinic shows {abs(delta)}% "
             f"{'more' if delta > 0 else 'less'} visibility than {competitor} "
-            f"in GPT-based patient searches. I can show you the full audit "
+            f"in AI-powered patient searches. Our knowledge graph publishing feature "
+            f"can help you actively raise your AI visibility. I can show you how it works "
             f"on a short call."
         )
     

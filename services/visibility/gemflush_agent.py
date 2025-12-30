@@ -137,22 +137,24 @@ class GEMflushAgent:
         if delta < 0:
             message = (
                 f"Quick insight: Your clinic shows {abs(percentage)}% "
-                f"less visibility than {competitor} in GPT-based patient searches. "
+                f"less visibility than {competitor} in AI-powered patient searches. "
+                f"Our knowledge graph publishing feature can help you actively raise your AI visibility. "
             )
         else:
             message = (
                 f"Great news: Your clinic shows {abs(percentage)}% "
                 f"more visibility than {competitor}, but there's still room to grow. "
+                f"Knowledge graph publishing can help you maintain and improve this advantage. "
             )
         
         if include_full_audit:
             message += (
-                f"I can show you the full audit breakdown on a short call "
-                f"to help you maximize your patient acquisition."
+                f"I can show you the full audit breakdown and how knowledge graph publishing "
+                f"can help maximize your patient acquisition on a short call."
             )
         else:
             message += (
-                f"I can show you the full audit on a short call."
+                f"I can show you how knowledge graph publishing works on a short call."
             )
         
         return message

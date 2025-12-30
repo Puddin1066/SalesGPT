@@ -60,6 +60,7 @@ class CalScheduler:
             f"Please book a time that works for you:\n\n"
             f"{booking_link}\n\n"
             f"During the demo, I'll show you:\n"
+            f"• How knowledge graph publishing actively raises your AI visibility\n"
             f"• Your clinic's current visibility score\n"
             f"• How you compare to competitors\n"
             f"• Actionable insights to improve patient discovery\n\n"
