@@ -1,0 +1,17 @@
+{
+  "allowedDirs": ["services/*", "state/*", "ui/*"],
+  "language": ["python", "typescript"],
+  "commitStyle": "atomic",
+  "tests": true,
+  "validateEnv": true,
+  "rules": [
+    "Each service is atomic - edit one without breaking others",
+    "Follow DRY and SOLID principles",
+    "Make it clear when mocking API data calls",
+    "Use type hints for all function parameters and returns",
+    "Add docstrings to all classes and functions",
+    "Handle errors gracefully with specific exception types",
+    "Use environment variables for all configuration",
+    "State management should be file-based JSON for simplicity"
+  ]
+}
