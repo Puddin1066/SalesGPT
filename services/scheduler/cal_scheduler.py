@@ -47,7 +47,7 @@ class CalScheduler:
     
     def generate_confirmation_message(self, booking_link: str) -> str:
         """
-        Generate confirmation message with booking link.
+        Generate confirmation message with booking link for SaaS demo.
         
         Args:
             booking_link: Booking link URL
@@ -56,8 +56,12 @@ class CalScheduler:
             Formatted confirmation message
         """
         return (
-            f"Great! I'd love to show you how we can improve your clinic's "
-            f"visibility. Please book a time that works for you:\n\n"
+            f"Great! I'd love to show you how our AI visibility platform works. "
+            f"Please book a time that works for you:\n\n"
             f"{booking_link}\n\n"
+            f"During the demo, I'll show you:\n"
+            f"• Your clinic's current visibility score\n"
+            f"• How you compare to competitors\n"
+            f"• Actionable insights to improve patient discovery\n\n"
             f"Looking forward to speaking with you!"
         )
