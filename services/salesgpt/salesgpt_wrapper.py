@@ -7,6 +7,7 @@ Checks sentiment and intent, returns appropriate responses.
 import os
 import json
 from typing import Dict, List, Optional, Literal
+from pathlib import Path
 from salesgpt.agents import SalesGPT
 from salesgpt.salesgptapi import SalesGPTAPI
 from langchain_community.chat_models import ChatLiteLLM
@@ -41,12 +42,15 @@ class SalesGPTWrapper:
         self.model_name = model_name or os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613")
         self.verbose = verbose
         
+        # Check if tools should be enabled (default: True, but can be disabled via env var)
+        use_tools = os.getenv("SALESGPT_USE_TOOLS", "true").lower() == "true"
+        
         # Initialize SalesGPT API instance
         self.sales_api = SalesGPTAPI(
             config_path=self.config_path,
             verbose=verbose,
             model_name=self.model_name,
-            use_tools=True,
+            use_tools=use_tools,
         )
     
     def classify_intent(
@@ -94,7 +98,7 @@ class SalesGPTWrapper:
         sender_name: str,
         sender_email: str,
         conversation_history: List[str],
-        clinic_name: Optional[str] = None,
+        company_name: Optional[str] = None,
         evidence_data: Optional[Dict] = None
     ) -> Dict[str, str]:
         """
@@ -105,12 +109,21 @@ class SalesGPTWrapper:
             sender_name: Sender's name
             sender_email: Sender's email
             conversation_history: Previous conversation messages
-            clinic_name: Clinic name for personalization
+            company_name: Company name for personalization
             evidence_data: GEMflush evidence data if available
             
         Returns:
             Dictionary with 'body', 'intent', and 'action' keys
         """
+        # Inject background knowledge into the conversation history if not already present
+        # This helps the LLM "know" the context before responding
+        if company_name and not any(company_name in msg for msg in self.sales_api.sales_agent.conversation_history):
+            background_msg = f"System: We are contacting {sender_name} from {company_name}."
+            if evidence_data:
+                evidence_text = self._format_evidence(evidence_data)
+                background_msg += f" Current visibility audit: {evidence_text}"
+            self.sales_api.sales_agent.conversation_history.append(background_msg)
+
         # Add user message to conversation
         self.sales_api.sales_agent.human_step(email_body)
         
@@ -121,15 +134,9 @@ class SalesGPTWrapper:
         intent = self.classify_intent(email_body, conversation_history)
         
         # Generate reply
-        import asyncio
-        response = asyncio.run(self.sales_api.do())
+        response = self._run_async_safely(self.sales_api.do())
         
         reply_body = response.get("response", "")
-        
-        # Inject evidence if available and intent is curious/neutral
-        if evidence_data and intent in ["curious", "neutral"]:
-            evidence_text = self._format_evidence(evidence_data)
-            reply_body = f"{reply_body}\n\n{evidence_text}"
         
         # Determine action based on intent
         action = "none"
@@ -146,6 +153,32 @@ class SalesGPTWrapper:
             "action": action,
             "conversation_stage": response.get("conversational_stage", ""),
         }
+    
+    def _run_async_safely(self, coro):
+        """
+        Run async coroutine safely, handling both sync and async contexts.
+        
+        Args:
+            coro: Coroutine to run
+            
+        Returns:
+            Result of the coroutine
+        """
+        import asyncio
+        import inspect
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            # We're already in an async context - create a task
+            # Note: This is a workaround for testing - in production, this method
+            # should ideally be async itself
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(asyncio.run, coro)
+                return future.result()
+        except RuntimeError:
+            # No event loop running, safe to use asyncio.run()
+            return asyncio.run(coro)
     
     def _format_evidence(self, evidence_data: Dict) -> str:
         """
@@ -192,3 +225,301 @@ class SalesGPTWrapper:
         # In a real implementation, retrieve from state/ or database
         # For now, return empty list
         return []
+    
+    def generate_initial_email_with_competitor(
+        self,
+        lead_name: str,
+        company_name: str,
+        location: str,
+        specialty: str,
+        competitive_analysis: Dict
+    ) -> Dict[str, str]:
+        """
+        Generate personalized initial cold email using SalesGPT.
+        Email mentions specific local competitor with KG presence.
+        
+        Args:
+            lead_name: Lead's name
+            company_name: Company name
+            location: Location/geography
+            specialty: Medical specialty
+            competitive_analysis: Competitive analysis dictionary
+            
+        Returns:
+            Dictionary with 'subject', 'body', and 'competitor_referenced' keys
+        """
+        import asyncio
+        
+        # Build context from competitive analysis
+        competitor_context = f"""
+        Lead Information:
+        - Name: {lead_name}
+        - Company: {company_name}
+        - Location: {location}
+        - Specialty: {specialty}
+        
+        Competitive Analysis:
+        - Their AI Visibility Score: {competitive_analysis['lead_score']}/100
+        - {competitive_analysis['competitor_name']} Visibility Score: {competitive_analysis['competitor_score']}/100
+        - Visibility Gap: {competitive_analysis['gap_percentage']}%
+        - {competitive_analysis['competitor_name']} is getting approximately {competitive_analysis['referral_multiplier']}x more referrals from ChatGPT
+        - Competitor has Wikidata Knowledge Graph: {competitive_analysis['competitor_has_kg']}
+        """
+        
+        # Seed conversation at Introduction stage
+        self.sales_api.sales_agent.seed_agent()
+        
+        # Inject competitor context
+        prompt = f"""
+        {competitor_context}
+        
+        Generate a personalized cold email that:
+        1. Mentions {competitive_analysis['competitor_name']} specifically as a local competitor
+        2. Notes they have {'Wikidata knowledge graph presence' if competitive_analysis['competitor_has_kg'] else 'significantly better AI visibility'}
+        3. States they're getting approximately {competitive_analysis['referral_multiplier']}x more patient referrals from ChatGPT
+        4. Suggests publishing to Wikidata knowledge graph with GEMflush to compete
+        5. Keep it concise (150-200 words)
+        6. Professional but direct
+        7. Reference the specific location ({location})
+        8. Make it personal and specific to their situation
+        
+        Generate the email body only (no subject line needed).
+        """
+        
+        # Add to conversation history
+        self.sales_api.sales_agent.conversation_history.append(prompt)
+        
+        # Generate email
+        response = self._run_async_safely(self.sales_api.do())
+        email_body = response.get("response", "")
+        
+        # Clean up response (remove any END_OF_TURN tags)
+        email_body = email_body.replace("<END_OF_TURN>", "").replace("<END_OF_CALL>", "").strip()
+        
+        # Generate subject line
+        subject = f"{lead_name.split()[0] if lead_name else 'Hi'}, {competitive_analysis['competitor_name']} is getting {competitive_analysis['referral_multiplier']}x more ChatGPT referrals"
+        
+        return {
+            "subject": subject,
+            "body": email_body,
+            "competitor_referenced": competitive_analysis['competitor_name']
+        }
+    
+    def _load_playbook(self, playbook_path: Optional[str] = None) -> Dict:
+        """
+        Load ELM email playbook configuration.
+        
+        Args:
+            playbook_path: Path to playbook JSON (defaults to examples/elm_email_playbook.json)
+            
+        Returns:
+            Playbook dictionary
+        """
+        if playbook_path is None:
+            playbook_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "examples",
+                "elm_email_playbook.json"
+            )
+        
+        with open(playbook_path, "r") as f:
+            return json.load(f)
+    
+    def _inject_disclaimer(
+        self,
+        email_body: str,
+        route_config: Dict,
+        disclaimer_mode: Dict
+    ) -> str:
+        """
+        Inject appropriate disclaimers based on disclaimer mode.
+        
+        Args:
+            email_body: Email body text
+            route_config: Route-specific configuration from playbook
+            disclaimer_mode: Dictionary with disclaimer flags
+            
+        Returns:
+            Email body with disclaimers appended
+        """
+        disclaimers = []
+        templates = route_config.get("disclaimer_templates", {})
+        
+        if disclaimer_mode.get("simulated_competitor_data"):
+            disclaimers.append(templates.get("simulated_competitor", ""))
+        
+        if disclaimer_mode.get("simulated_kg_presence"):
+            disclaimers.append(templates.get("simulated_kg", ""))
+        
+        if disclaimer_mode.get("simulated_audit_data"):
+            disclaimers.append(templates.get("simulated_audit", ""))
+        
+        # Filter out empty disclaimers and join
+        disclaimers = [d for d in disclaimers if d]
+        
+        if disclaimers:
+            disclaimer_text = "\n\n" + " ".join(disclaimers)
+            return email_body + disclaimer_text
+        
+        return email_body
+    
+    def generate_initial_email(
+        self,
+        route: str,
+        lead_name: str,
+        company_name: str,
+        location: str,
+        specialty: str,
+        competitive_analysis: Dict,
+        disclaimer_mode: Dict,
+        playbook_path: Optional[str] = None
+    ) -> Dict[str, str]:
+        """
+        Generate ELM-compliant initial cold email using route + playbook.
+        
+        Args:
+            route: "central" or "peripheral"
+            lead_name: Lead's name
+            company_name: Company name
+            location: Location/geography
+            specialty: Medical specialty
+            competitive_analysis: Competitive analysis dictionary
+            disclaimer_mode: Dictionary with disclaimer flags
+            playbook_path: Optional path to playbook JSON
+            
+        Returns:
+            Dictionary with 'subject', 'body', and 'route' keys
+        """
+        import asyncio
+        
+        # Load playbook
+        playbook = self._load_playbook(playbook_path)
+        route_config = playbook["routes"].get(route, playbook["routes"]["peripheral"])
+        
+        # Build context from competitive analysis
+        competitor_context = f"""
+        Lead Information:
+        - Name: {lead_name}
+        - Company: {company_name}
+        - Location: {location}
+        - Specialty: {specialty}
+        
+        Competitive Analysis:
+        - Their AI Visibility Score: {competitive_analysis.get('lead_score', 0)}/100
+        - {competitive_analysis.get('competitor_name', 'Competitor')} Visibility Score: {competitive_analysis.get('competitor_score', 0)}/100
+        - Visibility Gap: {competitive_analysis.get('gap_percentage', 0)}%
+        - {competitive_analysis.get('competitor_name', 'Competitor')} is getting approximately {competitive_analysis.get('referral_multiplier', 1.0)}x more referrals from ChatGPT
+        - Competitor has Wikidata Knowledge Graph: {competitive_analysis.get('competitor_has_kg', False)}
+        """
+        
+        # Build persuasion principles instructions
+        principles = route_config.get("persuasion_principles", {})
+        principle_instructions = []
+        
+        if principles.get("authority", {}).get("enabled"):
+            cues = principles["authority"].get("cues", [])
+            principle_instructions.append(f"Authority cues: {', '.join(cues)}")
+        
+        if principles.get("social_proof", {}).get("enabled"):
+            cues = principles["social_proof"].get("cues", [])
+            principle_instructions.append(f"Social proof cues: {', '.join(cues)}")
+        
+        if principles.get("loss_aversion", {}).get("enabled"):
+            cues = principles["loss_aversion"].get("cues", [])
+            principle_instructions.append(f"Loss aversion: {', '.join(cues)}")
+        
+        if principles.get("reciprocity", {}).get("enabled"):
+            cues = principles["reciprocity"].get("cues", [])
+            principle_instructions.append(f"Reciprocity: {', '.join(cues)}")
+        
+        if principles.get("commitment", {}).get("enabled"):
+            cues = principles["commitment"].get("cues", [])
+            principle_instructions.append(f"Commitment: {', '.join(cues)}")
+        
+        cognitive_fluency = principles.get("cognitive_fluency", {})
+        if cognitive_fluency.get("enabled"):
+            rules = cognitive_fluency.get("rules", [])
+            principle_instructions.append(f"Cognitive fluency: {', '.join(rules)}")
+        
+        # Build structure rules
+        structure_rules = "\n".join([f"- {rule}" for rule in route_config.get("structure_rules", [])])
+        
+        # Build disclaimer requirements
+        allowed_claims = route_config.get("allowed_claims", {})
+        disclaimer_requirements = []
+        if allowed_claims.get("must_say_estimate"):
+            disclaimer_requirements.append("MUST use words like 'estimate' or 'estimated' when referring to data")
+        if allowed_claims.get("must_say_simulated"):
+            disclaimer_requirements.append("MUST use words like 'simulated' or 'preview' when referring to audit data")
+        if allowed_claims.get("must_say_preview"):
+            disclaimer_requirements.append("MUST indicate this is a 'preview' or 'preliminary' analysis")
+        
+        prohibited = allowed_claims.get("prohibited_claims", [])
+        if prohibited:
+            disclaimer_requirements.append(f"DO NOT use these words: {', '.join(prohibited)}")
+        
+        # Build prompt
+        prompt = f"""
+        {competitor_context}
+        
+        Generate a personalized cold email following the {route.upper()} ROUTE of the Elaboration Likelihood Model.
+        
+        ROUTE-SPECIFIC STRUCTURE RULES:
+        {structure_rules}
+        
+        PERSUASION PRINCIPLES TO APPLY:
+        {chr(10).join(principle_instructions)}
+        
+        DISCLAIMER REQUIREMENTS (CRITICAL - MUST FOLLOW):
+        {chr(10).join(disclaimer_requirements)}
+        
+        SPECIFIC REQUIREMENTS:
+        1. Mention {competitive_analysis.get('competitor_name', 'the competitor')} specifically as a local competitor
+        2. Note they have {'Wikidata knowledge graph presence' if competitive_analysis.get('competitor_has_kg') else 'significantly better AI visibility'}
+        3. State they're getting approximately {competitive_analysis.get('referral_multiplier', 1.0)}x more patient referrals from ChatGPT
+        4. Reference the specific location ({location})
+        5. Make it personal and specific to their situation
+        6. Professional but direct tone
+        
+        Generate the email body only (no subject line needed).
+        Keep it concise and follow the {route} route structure rules exactly.
+        """
+        
+        # Seed conversation at Introduction stage
+        self.sales_api.sales_agent.seed_agent()
+        
+        # Add prompt to conversation history
+        self.sales_api.sales_agent.conversation_history.append(prompt)
+        
+        # Generate email
+        response = self._run_async_safely(self.sales_api.do())
+        email_body = response.get("response", "")
+        
+        # Clean up response
+        email_body = email_body.replace("<END_OF_TURN>", "").replace("<END_OF_CALL>", "").strip()
+        
+        # Inject disclaimers
+        email_body = self._inject_disclaimer(email_body, route_config, disclaimer_mode)
+        
+        # Generate subject line from patterns
+        subject_patterns = route_config.get("subject_patterns", [])
+        if subject_patterns:
+            # Use first pattern as default, replace placeholders
+            subject = subject_patterns[0].format(
+                lead_name=lead_name.split()[0] if lead_name else "Hi",
+                competitor_name=competitive_analysis.get('competitor_name', 'competitor'),
+                multiplier=competitive_analysis.get('referral_multiplier', 1.0),
+                location=location,
+                company_name=company_name,
+                gap=competitive_analysis.get('gap_percentage', 0)
+            )
+        else:
+            # Fallback subject
+            subject = f"{lead_name.split()[0] if lead_name else 'Hi'}, {competitive_analysis.get('competitor_name', 'competitor')} is getting {competitive_analysis.get('referral_multiplier', 1.0)}x more ChatGPT referrals"
+        
+        return {
+            "subject": subject,
+            "body": email_body,
+            "route": route,
+            "competitor_referenced": competitive_analysis.get('competitor_name', '')
+        }

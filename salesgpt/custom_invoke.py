@@ -2,16 +2,37 @@
 import inspect
 from typing import Any, Dict, Optional
 
-# Corrected import path for RunnableConfig
-from langchain.agents import AgentExecutor
-from langchain.callbacks.manager import CallbackManager
-from langchain.chains.base import Chain
+# Corrected import path for RunnableConfig - with fallbacks
+try:
+    from langchain.agents import AgentExecutor
+except ImportError:
+    try:
+        from langchain_core.agents import AgentExecutor
+    except ImportError:
+        # Create a placeholder
+        AgentExecutor = None
+
+try:
+    from langchain.callbacks.manager import CallbackManager
+except ImportError:
+    try:
+        from langchain_core.callbacks.manager import CallbackManager
+    except ImportError:
+        CallbackManager = None
+
+try:
+    from langchain.chains.base import Chain
+except ImportError:
+    try:
+        from langchain_core.chains import Chain
+    except ImportError:
+        Chain = None
 from langchain_core.load.dump import dumpd
 from langchain_core.outputs import RunInfo
 from langchain_core.runnables import RunnableConfig, ensure_config
 
 
-class CustomAgentExecutor(AgentExecutor):
+class CustomAgentExecutor(AgentExecutor if AgentExecutor else object):
     def invoke(
         self,
         input: Dict[str, Any],

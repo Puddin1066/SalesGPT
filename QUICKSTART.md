@@ -18,8 +18,16 @@ cp .env.example .env.local
 - `SMARTLEAD_API_KEY` - Email delivery
 - `HUBSPOT_API_KEY` - CRM management
 - `GEMFLUSH_API_KEY` - Visibility audits
-- `OPENAI_API_KEY` - SalesGPT replies
+- `OPENAI_API_KEY` - SalesGPT replies (or `OPENROUTER_API_KEY` for OpenRouter)
 - `CAL_BOOKING_LINK` - Your Cal.com link
+
+### Step 2.5: Using OpenRouter (Optional)
+If you have an OpenRouter account, set `OPENROUTER_API_KEY` and use an OpenRouter model prefix:
+```bash
+# In your .env.local
+OPENROUTER_API_KEY=your_openrouter_key
+GPT_MODEL=openrouter/openai/gpt-4o  # Example OpenRouter model
+```
 
 ### Step 3: Run Daily Pipeline
 ```bash

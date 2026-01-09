@@ -1,13 +1,41 @@
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Union
 
-from langchain.agents import (
-    AgentExecutor,
-    LLMSingleActionAgent,
-    create_openai_tools_agent,
-)
-from langchain.chains import LLMChain, RetrievalQA
-from langchain.chains.base import Chain
+# Import agents with fallbacks for different langchain versions
+try:
+    from langchain.agents import (
+        AgentExecutor,
+        LLMSingleActionAgent,
+        create_openai_tools_agent,
+    )
+except ImportError:
+    try:
+        from langchain_core.agents import AgentExecutor
+        from langchain.agents import LLMSingleActionAgent, create_openai_tools_agent
+    except ImportError:
+        # Create placeholders if not available
+        AgentExecutor = None
+        LLMSingleActionAgent = None
+        create_openai_tools_agent = None
+
+# Import chains - in LangChain 1.0+ they're in langchain-classic
+try:
+    from langchain_classic.chains import LLMChain
+    from langchain_classic.chains.base import Chain
+except ImportError:
+    try:
+        from langchain.chains import LLMChain
+        from langchain.chains.base import Chain
+    except ImportError:
+        try:
+            from langchain_core.chains import LLMChain, Chain
+        except ImportError:
+            # Create placeholders if not available
+            LLMChain = None
+            Chain = None
+
+# RetrievalQA is imported separately in tools.py with fallback
+RetrievalQA = None
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.agents import (
     _convert_agent_action_to_messages,
@@ -65,7 +93,7 @@ class SalesGPT(Chain):
     sales_conversation_utterance_chain: SalesConversationChain = Field(...)
     conversation_stage_dict: Dict = CONVERSATION_STAGES
 
-    model_name: str = "gpt-3.5-turbo-0613"  # TODO - make this an env variable
+    model_name: str = "gpt-3.5-turbo"  # TODO - make this an env variable
 
     use_tools: bool = False
     salesperson_name: str = "Ted Lasso"
@@ -421,7 +449,7 @@ class SalesGPT(Chain):
         ----------
         llm : Any
             The language model to be used for the completion.
-        \*\*kwargs : Any
+        **kwargs : Any
             Additional keyword arguments to be passed to the completion function.
 
         Returns
@@ -555,7 +583,7 @@ class SalesGPT(Chain):
             The ChatLiteLLM instance to initialize the SalesGPT Controller from.
         verbose : bool, optional
             If True, verbose output is enabled. Default is False.
-        \*\*kwargs : dict
+        **kwargs : dict
             Additional keyword arguments.
 
         Returns
@@ -595,43 +623,49 @@ class SalesGPT(Chain):
         knowledge_base = None
 
         if use_tools:
-            product_catalog = kwargs.pop("product_catalog", None)
-            tools = get_tools(product_catalog)
+            if LLMSingleActionAgent is None:
+                import warnings
+                warnings.warn("LLMSingleActionAgent not available - tools will be disabled")
+                use_tools = False
+                sales_agent_executor = None
+            else:
+                product_catalog = kwargs.pop("product_catalog", None)
+                tools = get_tools(product_catalog)
 
-            prompt = CustomPromptTemplateForTools(
-                template=SALES_AGENT_TOOLS_PROMPT,
-                tools_getter=lambda x: tools,
-                input_variables=[
-                    "input",
-                    "intermediate_steps",
-                    "salesperson_name",
-                    "salesperson_role",
-                    "company_name",
-                    "company_business",
-                    "company_values",
-                    "conversation_purpose",
-                    "conversation_type",
-                    "conversation_history",
-                ],
-            )
-            llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=verbose)
-            tool_names = [tool.name for tool in tools]
-            output_parser = SalesConvoOutputParser(
-                ai_prefix=kwargs.get("salesperson_name", ""), verbose=verbose
-            )
-            sales_agent_with_tools = LLMSingleActionAgent(
-                llm_chain=llm_chain,
-                output_parser=output_parser,
-                stop=["\nObservation:"],
-                allowed_tools=tool_names,
-            )
+                prompt = CustomPromptTemplateForTools(
+                    template=SALES_AGENT_TOOLS_PROMPT,
+                    tools_getter=lambda x: tools,
+                    input_variables=[
+                        "input",
+                        "intermediate_steps",
+                        "salesperson_name",
+                        "salesperson_role",
+                        "company_name",
+                        "company_business",
+                        "company_values",
+                        "conversation_purpose",
+                        "conversation_type",
+                        "conversation_history",
+                    ],
+                )
+                llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=verbose)
+                tool_names = [tool.name for tool in tools]
+                output_parser = SalesConvoOutputParser(
+                    ai_prefix=kwargs.get("salesperson_name", ""), verbose=verbose
+                )
+                sales_agent_with_tools = LLMSingleActionAgent(
+                    llm_chain=llm_chain,
+                    output_parser=output_parser,
+                    stop=["\nObservation:"],
+                    allowed_tools=tool_names,
+                )
 
-            sales_agent_executor = CustomAgentExecutor.from_agent_and_tools(
-                agent=sales_agent_with_tools,
-                tools=tools,
-                verbose=verbose,
-                return_intermediate_steps=True,
-            )
+                sales_agent_executor = CustomAgentExecutor.from_agent_and_tools(
+                    agent=sales_agent_with_tools,
+                    tools=tools,
+                    verbose=verbose,
+                    return_intermediate_steps=True,
+                )
 
         return cls(
             stage_analyzer_chain=stage_analyzer_chain,

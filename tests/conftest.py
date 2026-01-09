@@ -1,7 +1,13 @@
 import os
+import sys
+from unittest.mock import MagicMock
 
 import pytest
 from dotenv import load_dotenv
+
+
+# Note: Langchain mocking disabled - all dependencies are installed
+# If you need mocking for tests without dependencies, uncomment the code below
 
 
 @pytest.fixture

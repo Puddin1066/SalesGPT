@@ -16,7 +16,10 @@ Always think about at which conversation stage you are at before answering:
 3: Value proposition: Briefly explain how your product/service can benefit the prospect. Focus on the unique selling points and value proposition of your product/service that sets it apart from competitors.
 4: Needs analysis: Ask open-ended questions to uncover the prospect's needs and pain points. Listen carefully to their responses and take notes.
 5: Solution presentation: Based on the prospect's needs, present your product/service as the solution that can address their pain points.
-6: Objection handling: Address any objections that the prospect may have regarding your product/service. Be prepared to provide evidence or testimonials to support your claims.
+6: Objection handling: Address any objections that the prospect may have regarding your product/service. Use the AI Visibility Library to provide evidence:
+- Benchmark: Most businesses only appear in 15% of AI search results (GPT-4/Claude).
+- Competitor Gap: Top competitors typically have 3x higher visibility in AI recommendations.
+- Cost of Inaction: Low AI visibility leads to consistent patient/customer loss to rivals.
 7: Close: Ask for the sale by proposing a next step. This could be a demo, a trial or a meeting with decision-makers. Ensure to summarize what has been discussed and reiterate the benefits.
 8: End conversation: The prospect has to leave to call, the prospect is not interested, or next steps where already determined by the sales agent.
 
@@ -74,7 +77,10 @@ Always think about at which conversation stage you are at before answering:
 3: Value proposition: Briefly explain how your product/service can benefit the prospect. Focus on the unique selling points and value proposition of your product/service that sets it apart from competitors.
 4: Needs analysis: Ask open-ended questions to uncover the prospect's needs and pain points. Listen carefully to their responses and take notes.
 5: Solution presentation: Based on the prospect's needs, present your product/service as the solution that can address their pain points.
-6: Objection handling: Address any objections that the prospect may have regarding your product/service. Be prepared to provide evidence or testimonials to support your claims.
+6: Objection handling: Address any objections that the prospect may have regarding your product/service. Use the AI Visibility Library to provide evidence:
+- Benchmark: Most businesses only appear in 15% of AI search results (GPT-4/Claude).
+- Competitor Gap: Top competitors typically have 3x higher visibility in AI recommendations.
+- Cost of Inaction: Low AI visibility leads to consistent patient/customer loss to rivals.
 7: Close: Ask for the sale by proposing a next step. This could be a demo, a trial or a meeting with decision-makers. Ensure to summarize what has been discussed and reiterate the benefits.
 8: End conversation: The prospect has to leave to call, the prospect is not interested, or next steps where already determined by the sales agent.
 
@@ -115,3 +121,54 @@ Only use the current conversation stage and conversation history to determine yo
 If the conversation history is empty, always start with Introduction!
 If you think you should stay in the same conversation stage until user gives more input, just output the current conversation stage.
 Do not answer anything else nor add anything to you answer."""
+
+
+# ELM (Elaboration Likelihood Model) Email Generation Guidelines
+# These principles are applied when generating initial cold emails via generate_initial_email()
+
+ELM_DISCLAIMER_REQUIREMENTS = """
+CRITICAL DISCLAIMER REQUIREMENTS FOR MOCKED/SIMULATED DATA:
+
+When generating emails that reference competitive analysis, visibility audits, or knowledge graph data:
+
+1. If data is simulated/preview/estimated:
+   - MUST use words: "estimate", "estimated", "simulated", "preview", "preliminary"
+   - MUST indicate this is not final/verified data
+   - Example: "Based on a simulated preview audit..." or "This is an estimate until verified"
+
+2. Prohibited words (when data is simulated):
+   - "definitive", "confirmed", "verified", "guaranteed", "actual", "real"
+   - These imply certainty when data is mocked
+
+3. Transparency tone:
+   - Be transparent, not apologetic
+   - Frame as "preview" or "preliminary analysis" that requires participation to verify
+   - Example: "This competitive analysis is based on a simulated preview audit. Full verification requires your participation."
+
+4. Placement:
+   - Disclaimers should be concise (1-2 sentences)
+   - Can be at end of email or integrated naturally into the narrative
+   - Should not undermine the value proposition, but maintain honesty
+"""
+
+ELM_ROUTE_GUIDELINES = """
+ELM ROUTE-SPECIFIC GUIDELINES:
+
+CENTRAL ROUTE (High Elaboration):
+- Lead with specific evidence: audit numbers, competitor comparison, mechanism
+- Use concrete numbers: visibility scores, gap percentages, referral multipliers
+- Explain the mechanism: "Knowledge graph presence" or "AI search optimization"
+- Frame causal claims as hypotheses with clear disclaimers if simulated
+- Include specific next step CTA: "I'll send the 1-page report" or "book a 15-min review"
+- Length: 200-250 words - detailed but focused
+- Apply: Authority, Social Proof, Loss Aversion, Cognitive Fluency
+
+PERIPHERAL ROUTE (Low Elaboration):
+- Keep email short: 100-150 words maximum
+- Lead with one simple question or observation
+- Use heuristic cues: authority + social proof + simple CTA
+- Avoid detailed numbers or technical explanations
+- Single clear CTA: "15-min walkthrough?" or "Quick chat?"
+- Friendly, conversational tone
+- Apply: Authority, Social Proof, Reciprocity, Commitment, Cognitive Fluency
+"""

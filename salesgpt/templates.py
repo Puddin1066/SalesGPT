@@ -1,6 +1,14 @@
 from typing import Callable
 
-from langchain.prompts.base import StringPromptTemplate
+try:
+    from langchain.prompts.base import StringPromptTemplate
+except ImportError:
+    # Fallback for langchain 0.1.0 - use BasePromptTemplate from langchain_core
+    try:
+        from langchain_core.prompts.base import BasePromptTemplate as StringPromptTemplate
+    except ImportError:
+        # Final fallback - use PromptTemplate as base
+        from langchain.prompts import PromptTemplate as StringPromptTemplate
 
 
 class CustomPromptTemplateForTools(StringPromptTemplate):
@@ -29,3 +37,10 @@ class CustomPromptTemplateForTools(StringPromptTemplate):
         # Create a list of tool names for the tools provided
         kwargs["tool_names"] = ", ".join([tool.name for tool in tools])
         return self.template.format(**kwargs)
+    
+    def format_prompt(self, **kwargs) -> str:
+        """
+        Format prompt method required by newer LangChain versions.
+        Delegates to format() method.
+        """
+        return self.format(**kwargs)

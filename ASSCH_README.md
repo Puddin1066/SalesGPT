@@ -36,7 +36,7 @@ webhook_handler.py       → Smartlead reply event processor
   - Cal.com booking link
   - HubSpot (free CRM account)
   - GEMflush audit endpoint
-  - OpenAI (for SalesGPT)
+  - OpenAI (or OpenRouter) for SalesGPT
 
 ### 2. Installation
 
@@ -65,6 +65,9 @@ SMARTLEAD_API_KEY=your_key_here
 HUBSPOT_API_KEY=your_key_here
 GEMFLUSH_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
+# Optional: Use OpenRouter instead of OpenAI
+OPENROUTER_API_KEY=your_openrouter_key
+GPT_MODEL=openrouter/openai/gpt-4o
 
 # Cal.com Booking Link
 CAL_BOOKING_LINK=https://cal.com/your-link

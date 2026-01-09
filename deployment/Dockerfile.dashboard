@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt streamlit plotly pandas
+
+# Copy dashboard files
+COPY dashboard/ ./dashboard/
+COPY salesgpt/ ./salesgpt/
+COPY state/ ./state/
+COPY services/ ./services/
+COPY workflows/ ./workflows/
+COPY main_agent.py .
+COPY salesgpt.config.py ./salesgpt/config.py 2>/dev/null || true
+
+# Expose Streamlit port
+EXPOSE 8501
+
+# Run Streamlit
+CMD ["streamlit", "run", "dashboard/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+

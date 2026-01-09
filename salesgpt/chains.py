@@ -1,5 +1,29 @@
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+# Import LLMChain - in LangChain 1.0+ it's in langchain-classic
+try:
+    from langchain_classic.chains import LLMChain
+except ImportError:
+    try:
+        from langchain.chains import LLMChain
+    except ImportError:
+        try:
+            from langchain_core.chains import LLMChain
+        except ImportError:
+            # Create a placeholder if not available
+            LLMChain = None
+            import warnings
+            warnings.warn("LLMChain not available - some features may be limited")
+
+# Import PromptTemplate - in LangChain 1.0+ it's in langchain_core
+try:
+    from langchain_core.prompts import PromptTemplate
+except ImportError:
+    try:
+        from langchain.prompts import PromptTemplate
+    except ImportError:
+        # Create a placeholder if not available
+        PromptTemplate = None
+        import warnings
+        warnings.warn("PromptTemplate not available - some features may be limited")
 from langchain_community.chat_models import ChatLiteLLM
 
 from salesgpt.logger import time_logger

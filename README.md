@@ -34,9 +34,9 @@ If you need assistance, our team is here to help! Please reach out to us at [Ody
 
 ## :red_circle: Latest News
 
+- **A.S.S.C.H. Assembly is live!** Run a full autonomous sales pipeline from lead generation (Apollo) to CRM (HubSpot) to booking (Cal.com).
 - AI Sales Agents can now ACTUALLY sell! They autonomously generate Stripe payment links to sell products and services to customers.
-- You can now test your AI Sales Agents via our frontend.
-- Sales Agent can now take advantage of **tools**, such as look up products in a product catalog!
+- Sales Agent can now take advantage of **visibility tools**, such as performing live AI audits via GEMflush!
 
 # Demos and Use Cases
 
@@ -88,8 +88,14 @@ The AI Sales Agent understands the conversation stage (you can define your own s
 ### Automated Email Communication:
 - Enhance your sales process with automated email communication. SalesGPT can now send personalized emails to prospects, including follow-ups or product information. 
 
-### Calendly Meeting Scheduling
-- The AI Agent can now facilitate scheduling meetings by generating Calendly links.
+### AI Visibility Audits (GEMflush):
+- SalesGPT can autonomously generate "AI Visibility Audits" to show prospects how their business appears (or doesn't) in LLM-based searches compared to competitors.
+
+### Lead Enrichment & Research:
+- The AI Agent can perform deep research on a lead's clinic, website, and background using Apollo integrations directly during the conversation.
+
+### Calendly & Cal.com Meeting Scheduling
+- The AI Agent can now facilitate scheduling meetings by generating Calendly or Cal.com links.
 
 ### Use Any LLM to Power Your AI Sales Agent
 - Thanks to our integration with [LiteLLM](https://github.com/BerriAI/litellm), you can choose *any closed/open-sourced LLM* to work with SalesGPT! Thanks to LiteLLM maintainers for this contribution!
@@ -111,6 +117,17 @@ The AI Sales Agent understands the conversation stage (you can define your own s
 
 - Upcoming integration with [PromptArmor](https://promptarmor.com/) to protect your AI Sales Agents against security vulnerabilities (see our roadmap).
 
+### A/B Testing & Analytics Dashboard
+
+- **Email A/B Testing**: Test subject lines, body structures, evidence levels, CTAs, and more
+- **Apollo Lead Sourcing A/B Testing**: Optimize lead sourcing configurations using multi-armed bandit algorithms
+- **Manual Review Dashboard**: Beautiful Streamlit interface for reviewing and sending 20+ emails per minute
+- **Performance Analytics**: Track reply rates, booking rates, close rates, and ROI
+- **AI Recommendations**: Get data-driven optimization recommendations
+- **Background Queue Builder**: Continuously source leads and generate emails for review
+
+See [A/B Testing Guide](docs/AB_TESTING_GUIDE.md) and [Dashboard Guide](docs/DASHBOARD_GUIDE.md) for details.
+
 # Quick Start
 
 ```python
@@ -119,9 +136,10 @@ from salesgpt.agents import SalesGPT
 from langchain_community.chat_models import ChatLiteLLM
 
 from dotenv import load_dotenv
-load_dotenv() # make sure you have .env file with your API keys, eg., OPENAI_API_KEY=sk-xxx, MINDWARE_API_KEY etc.
+load_dotenv() # make sure you have .env file with your API keys, eg., OPENAI_API_KEY=sk-xxx, OPENROUTER_API_KEY=sk-xxx (for OpenRouter), MINDWARE_API_KEY etc.
 
 # select your model - we support 50+ LLMs via LiteLLM https://docs.litellm.ai/docs/providers
+# If using OpenRouter, use model_name="openrouter/openai/gpt-4o"
 llm = ChatLiteLLM(temperature=0.4, model_name="gpt-4-0125-preview") 
                             
 sales_agent = SalesGPT.from_llm(llm, use_tools=True, verbose=False,
@@ -196,6 +214,42 @@ sales_agent.step()
 
 
 ## Architecture
+
+### Refactored Architecture (Latest)
+
+**📖 For detailed information on how the refactored system operates, see [REFACTORED_ARCHITECTURE.md](REFACTORED_ARCHITECTURE.md)**
+
+The system has been refactored with:
+- **SQLite Database** - Replaces JSON files for scalable state management
+- **Dependency Injection** - Better testability and modularity
+- **Centralized Configuration** - Pydantic Settings for type-safe configuration
+- **Webhook Security** - HMAC signature verification and rate limiting
+
+**Quick Start with Refactored System:**
+```python
+from salesgpt.config import get_settings
+from salesgpt.container import ServiceContainer
+
+settings = get_settings()
+container = ServiceContainer(settings)
+orchestrator = container.orchestrator
+
+await orchestrator.run_daily_pipeline(
+    geography="New York, NY",
+    specialty="Dermatology",
+    lead_limit=50
+)
+```
+
+### A.S.S.C.H. Assembly: The Full Sales Pipeline
+SalesGPT now powers the **A.S.S.C.H. Assembly**—a complete, end-to-end autonomous sales pipeline that handles everything from lead generation to booked meetings:
+
+1.  **Lead Sourcing (Apollo)**: Automatically find and score leads based on geography, medical specialty, and clinic metadata.
+2.  **CRM Integration (HubSpot)**: Sync leads immediately into your CRM for full pipeline visibility.
+3.  **Outbound Outreach (Smartlead)**: Launch automated email sequences with built-in domain rotation and warm-up.
+4.  **AI Facilitation (SalesGPT)**: When a lead replies, SalesGPT classifies the intent (Interest, Objection, Curious) and handles the conversation.
+5.  **Visibility Enrichment (GEMflush)**: For curious or skeptical leads, SalesGPT autonomously pulls AI visibility audits to provide "evidence-based" reasons why the clinic needs your services.
+6.  **Booking (Cal.com)**: Seamlessly transition interested leads to a booked call with automated scheduling.
 
 <img src="https://demo-bucket-45.s3.amazonaws.com/new_flow2.png"  width="800" height="440">
 
@@ -287,9 +341,57 @@ After successful setup, access SalesGPT at [localhost:3000/chat](http://localhos
 ### 2. Direct User Interface Launch
 If Docker is not part of your workflow, you can directly launch the SalesGPT user interface. Please refer to the `README.md` file in the frontend directory for instructions on setting up the UI locally.
 
+### 2.5. Refactored System Setup (Recommended)
+
+For the refactored system with database and dependency injection:
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Configure environment variables
+cp .env.example .env
+# Edit .env with your API keys and configuration
+
+# 3. Initialize database
+python -c "from salesgpt.config import get_settings; from salesgpt.db.connection import DatabaseManager; s = get_settings(); db = DatabaseManager(s.database_url); db.create_tables(); print('Database initialized!')"
+
+# 4. Run daily pipeline
+python main_agent.py --campaign daily --geography "New York, NY" --specialty "Dermatology"
+
+# 5. Start webhook handler (in separate terminal)
+python webhook_handler.py
+```
+
+See [REFACTORED_ARCHITECTURE.md](REFACTORED_ARCHITECTURE.md) for detailed setup instructions.
+
 ### 3. Using the Terminal
 For terminal enthusiasts or automation scripts, run SalesGPT with the following command:
 `python run.py --verbose True --config examples/example_agent_setup.json`
+
+### 3.5. Refactored System (Recommended for A.S.S.C.H. Assembly)
+
+The refactored system uses dependency injection and SQLite database. See [REFACTORED_ARCHITECTURE.md](REFACTORED_ARCHITECTURE.md) for complete setup.
+
+**Quick Setup:**
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Configure .env file (see .env.example)
+# Required: OPENAI_API_KEY, APOLLO_API_KEY, SMARTLEAD_API_KEY, HUBSPOT_ACCESS_TOKEN
+# Required: SMARTLEAD_FROM_EMAIL, WEBHOOK_SECRET_KEY
+# Optional: DATABASE_URL (default: sqlite:///./salesgpt.db)
+
+# 3. Initialize database
+python -c "from salesgpt.config import get_settings; from salesgpt.db.connection import DatabaseManager; s = get_settings(); db = DatabaseManager(s.database_url); db.create_tables(); print('✓ Database initialized')"
+
+# 4. Run daily pipeline
+python main_agent.py --campaign daily --geography "New York, NY" --specialty "Dermatology" --limit 50
+
+# 5. Start webhook handler (for reply processing)
+python webhook_handler.py
+```
 
 ### 4. Running Only the Backend
 For those who wish to integrate SalesGPT's backend with their own user interface or application, running only the backend is a straightforward process. This allows you to leverage the powerful features of SalesGPT while maintaining full control over the user experience.

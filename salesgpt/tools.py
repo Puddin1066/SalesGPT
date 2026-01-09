@@ -3,12 +3,60 @@ import os
 
 import boto3
 import requests
-from langchain.agents import Tool
-from langchain.chains import RetrievalQA
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.chat_models import BedrockChat
+try:
+    from langchain.agents import Tool
+except ImportError:
+    try:
+        # Fallback for langchain 0.1.0 - try langchain_community
+        from langchain_community.tools import Tool
+    except ImportError:
+        try:
+            # Try langchain_core.tools
+            from langchain_core.tools import Tool
+        except ImportError:
+            # Create a simple Tool class as last resort
+            from typing import Callable
+            class Tool:
+                def __init__(self, name: str, func: Callable, description: str):
+                    self.name = name
+                    self.func = func
+                    self.description = description
+# RetrievalQA - try multiple import paths for compatibility
+try:
+    from langchain.chains import RetrievalQA
+except ImportError:
+    try:
+        from langchain.chains.retrieval_qa.base import RetrievalQA
+    except ImportError:
+        try:
+            # Newer langchain versions - create a placeholder
+            RetrievalQA = None
+            import warnings
+            warnings.warn("RetrievalQA not available - knowledge base functionality will be limited")
+        except:
+            RetrievalQA = None
+
+# Text splitter - try multiple import paths
+try:
+    from langchain.text_splitter import CharacterTextSplitter
+except ImportError:
+    try:
+        from langchain_text_splitters import CharacterTextSplitter
+    except ImportError:
+        # Fallback - create simple splitter
+        class CharacterTextSplitter:
+            def __init__(self, chunk_size=5000, chunk_overlap=200):
+                self.chunk_size = chunk_size
+                self.chunk_overlap = chunk_overlap
+            def split_text(self, text):
+                # Simple chunking
+                chunks = []
+                for i in range(0, len(text), self.chunk_size - self.chunk_overlap):
+                    chunks.append(text[i:i+self.chunk_size])
+                return chunks
+from langchain_community.chat_models import BedrockChat, ChatLiteLLM
 from langchain_community.vectorstores import Chroma
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from litellm import completion
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -27,13 +75,25 @@ def setup_knowledge_base(
     text_splitter = CharacterTextSplitter(chunk_size=5000, chunk_overlap=200)
     texts = text_splitter.split_text(product_catalog)
 
-    llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0)
+    llm = ChatLiteLLM(model_name="gpt-4-0125-preview", temperature=0)
 
     embeddings = OpenAIEmbeddings()
     docsearch = Chroma.from_texts(
         texts, embeddings, collection_name="product-knowledge-base"
     )
 
+    if RetrievalQA is None:
+        # Fallback for newer langchain versions
+        # Return a simple retriever wrapper
+        class SimpleRetriever:
+            def __init__(self, retriever):
+                self.retriever = retriever
+            def run(self, query):
+                docs = self.retriever.get_relevant_documents(query)
+                return docs[0].page_content if docs else ""
+        
+        return SimpleRetriever(docsearch.as_retriever())
+    
     knowledge_base = RetrievalQA.from_chain_type(
         llm=llm, chain_type="stuff", retriever=docsearch.as_retriever()
     )
@@ -245,6 +305,49 @@ def generate_calendly_invitation_link(query):
     else:
         return "Failed to create Calendly link: "
 
+def get_visibility_audit(query: str) -> str:
+    """Useful for when you need to check a business's visibility in AI search compared to competitors."""
+    from services.visibility import GEMflushAgent
+    try:
+        # Expected query: "company_id, competitor_name"
+        parts = [p.strip() for p in query.split(",")]
+        company_id = parts[0]
+        competitor_name = parts[1] if len(parts) > 1 else os.getenv("DEFAULT_COMPETITOR", "local competitors")
+        
+        agent = GEMflushAgent()
+        comparison = agent.get_competitor_comparison(company_id, competitor_name)
+        
+        if "error" in comparison:
+            return f"Could not retrieve audit for {company_id}: {comparison['error']}"
+            
+        return agent.format_evidence_message(comparison, include_full_audit=True)
+    except Exception as e:
+        return f"Error retrieving visibility audit: {str(e)}"
+
+def lead_research(query: str) -> str:
+    """Useful for when you need to research a lead's background or company details."""
+    from services.apollo import ApolloAgent
+    try:
+        # Expected query: email
+        agent = ApolloAgent()
+        # This is a simplified search - in real use, we'd search by email
+        # For now, we search by keywords to get enrichment
+        leads = agent.search_leads(geography="", specialty=query, limit=1)
+        if not leads:
+            return f"No information found for {query}"
+        
+        lead = leads[0]
+        return (
+            f"Lead: {lead.name}\n"
+            f"Company: {lead.company_name}\n"
+            f"Specialty: {lead.specialty}\n"
+            f"Website: {lead.website}\n"
+            f"Title: {lead.metadata.get('title', 'N/A')}\n"
+            f"Employee Count: {lead.metadata.get('employee_count', 0)}"
+        )
+    except Exception as e:
+        return f"Error researching lead: {str(e)}"
+
 def get_tools(product_catalog):
     # query to get_tools can be used to be embedded and relevant tools found
     # see here: https://langchain-langchain.vercel.app/docs/use_cases/agents/custom_agent_with_plugin_retrieval#tool-retriever
@@ -272,6 +375,16 @@ def get_tools(product_catalog):
             func=generate_calendly_invitation_link,
             description='''Useful for when you need to create invite for a personal meeting in Sleep Heaven shop. 
             Sends a calendly invitation based on the query input.''',
+        ),
+        Tool(
+            name="GetVisibilityAudit",
+            func=get_visibility_audit,
+            description="Useful for when you need to check a business's visibility in AI search compared to competitors. Input should be 'company_name, competitor_name' or just 'company_name'.",
+        ),
+        Tool(
+            name="LeadResearch",
+            func=lead_research,
+            description="Useful for when you need to research a lead's background or company details. Input should be the company name or email.",
         )
     ]
 

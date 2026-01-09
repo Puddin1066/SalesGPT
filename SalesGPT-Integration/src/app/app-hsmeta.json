@@ -1,0 +1,23 @@
+{
+  "uid": "salesgpt_integration",
+  "type": "app",
+  "config": {
+    "description": "SalesGPT HubSpot Integration for CRM operations",
+    "name": "SalesGPT Integration",
+    "distribution": "private",
+    "auth": {
+      "type": "static",
+      "requiredScopes": [
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write"
+      ]
+    },
+    "permittedUrls": {
+      "fetch": ["https://api.hubapi.com"],
+      "iframe": [],
+      "img": []
+    }
+  }
+}

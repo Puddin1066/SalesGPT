@@ -130,7 +130,7 @@ export function ChatInterface() {
 
     // Call the function to fetch the bot name
     fetchBotName();
-  }, [botName, session_id]); // Include botName and session_id in the dependency array
+  }, [session_id]); // Removed botName from dependency array to avoid infinite loop
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);

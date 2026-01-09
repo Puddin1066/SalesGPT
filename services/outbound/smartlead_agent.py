@@ -39,7 +39,10 @@ class SmartleadAgent:
         if not self.api_key:
             raise ValueError("SMARTLEAD_API_KEY not found in environment")
         
-        self.base_url = "https://api.smartlead.ai/v1"
+        # Support mock API URL override
+        self.base_url = os.getenv("SMARTLEAD_API_URL", "https://server.smartlead.ai/api/v1")
+        if not self.base_url.endswith("/v1"):
+            self.base_url = self.base_url.rstrip("/") + "/v1"
         self.headers = {
             "api-key": self.api_key,
             "Content-Type": "application/json",

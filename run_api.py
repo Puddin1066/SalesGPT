@@ -16,11 +16,8 @@ load_dotenv()
 
 # Access environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-CORS_ORIGINS = ["http://localhost:3000", 
-                "http://react-frontend:80",
-                "https://sales-gpt-frontend-git-main-filip-odysseypartns-projects.vercel.app",
-                "https://sales-gpt-frontend.vercel.app"]
-CORS_METHODS = ["GET", "POST"]
+CORS_ORIGINS = ["*"]
+CORS_METHODS = ["*"]
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -70,7 +67,7 @@ async def get_bot_name(authorization: Optional[str] = Header(None)):
             "PRODUCT_CATALOG", "examples/sample_product_catalog.txt"
         ),
         verbose=True,
-        model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613"),
+        model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo"),
     )
     name = sales_api.sales_agent.salesperson_name
     return {"name": name, "model": sales_api.sales_agent.model_name}
@@ -110,7 +107,7 @@ async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), a
             product_catalog=os.getenv(
                 "PRODUCT_CATALOG", "examples/sample_product_catalog.txt"
             ),
-            model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613"),
+            model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo"),
             use_tools=os.getenv("USE_TOOLS_IN_API", "True").lower()
             in ["true", "1", "t"],
         )
@@ -134,4 +131,4 @@ async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), a
 
 # Main entry point
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

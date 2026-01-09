@@ -1,0 +1,48 @@
+#!/usr/bin/expect -f
+# Automated HubSpot project creation using expect
+
+set timeout 60
+
+spawn hs project create
+
+# Wait for project name prompt
+expect {
+    "Enter your project name:" {
+        send "SalesGPT-Integration\r"
+        exp_continue
+    }
+    "Choose where to create the project:" {
+        send "\r"
+        exp_continue
+    }
+    "Select the base contents" {
+        send "\r"
+        exp_continue
+    }
+    "distribution" {
+        send "\r"
+        exp_continue
+    }
+    "authentication" {
+        send "\r"
+        exp_continue
+    }
+    "features" {
+        send "\r"
+        exp_continue
+    }
+    "Press" {
+        send "\r"
+        exp_continue
+    }
+    eof {
+        puts "Project creation completed"
+    }
+    timeout {
+        puts "Timeout waiting for prompt"
+        exit 1
+    }
+}
+
+expect eof
+

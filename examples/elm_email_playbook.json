@@ -1,0 +1,188 @@
+{
+  "version": "1.0",
+  "description": "ELM-driven cold email playbook for SaaS outreach",
+  "routes": {
+    "central": {
+      "description": "High elaboration route - evidence-driven, detailed messaging",
+      "subject_patterns": [
+        "{lead_name}, {competitor_name} is getting {multiplier}x more ChatGPT referrals",
+        "Your AI visibility gap vs {competitor_name} in {location}",
+        "Evidence: {competitor_name} has {gap}% higher AI visibility than {company_name}"
+      ],
+      "structure_rules": [
+        "Lead with specific evidence: audit numbers, competitor comparison, mechanism (KG presence)",
+        "Frame causal claim as hypothesis with clear disclaimer if simulated",
+        "Use concrete numbers: visibility scores, gap percentages, referral multipliers",
+        "Explain the mechanism: 'Knowledge graph presence' or 'AI search optimization'",
+        "Include specific next step CTA: 'I'll send the 1-page report' or 'book a 15-min review'",
+        "Keep to 200-250 words - detailed but focused"
+      ],
+      "persuasion_principles": {
+        "authority": {
+          "enabled": true,
+          "cues": [
+            "Benchmark stats: 'Most businesses only appear in 15% of AI search results'",
+            "Methodological framing: 'Based on our AI visibility audit methodology'"
+          ]
+        },
+        "social_proof": {
+          "enabled": true,
+          "cues": [
+            "Others in your area: 'Similar practices in {location} have seen...'",
+            "Pattern recognition: 'We've seen this pattern with {specialty} clinics'"
+          ]
+        },
+        "loss_aversion": {
+          "enabled": true,
+          "cues": [
+            "Frame missed referrals as ongoing leakage: 'You're losing X referrals per month'",
+            "Competitive disadvantage: '{competitor_name} is capturing leads you should be getting'"
+          ]
+        },
+        "reciprocity": {
+          "enabled": false,
+          "cues": []
+        },
+        "commitment": {
+          "enabled": false,
+          "cues": []
+        },
+        "cognitive_fluency": {
+          "enabled": true,
+          "rules": [
+            "One idea per paragraph",
+            "Minimal jargon - explain technical terms",
+            "Use concrete numbers, not vague claims"
+          ]
+        }
+      },
+      "disclaimer_templates": {
+        "simulated_competitor": "Note: This competitive analysis is based on a simulated preview audit. Full verification requires your participation.",
+        "simulated_kg": "We don't have your full knowledge graph entity yet—this is an estimate until verified through our audit process.",
+        "simulated_audit": "Based on a simulated preview audit of your AI visibility. Actual results may vary after full analysis."
+      },
+      "allowed_claims": {
+        "must_say_estimate": true,
+        "must_say_simulated": true,
+        "must_say_preview": true,
+        "prohibited_claims": [
+          "definitive",
+          "confirmed",
+          "verified",
+          "guaranteed"
+        ]
+      }
+    },
+    "peripheral": {
+      "description": "Low elaboration route - heuristic cues, low cognitive load",
+      "subject_patterns": [
+        "Quick question about {company_name}'s visibility",
+        "Quick benchmark for {location} {specialty}",
+        "15-min walkthrough for {company_name}?"
+      ],
+      "structure_rules": [
+        "Keep email short: 100-150 words maximum",
+        "Lead with one simple question or observation",
+        "Use heuristic cues: authority + social proof + simple CTA",
+        "Avoid detailed numbers or technical explanations",
+        "Single clear CTA: '15-min walkthrough?' or 'Quick chat?'",
+        "Friendly, conversational tone"
+      ],
+      "persuasion_principles": {
+        "authority": {
+          "enabled": true,
+          "cues": [
+            "Quick benchmark: 'We help practices like yours improve AI visibility'",
+            "Simple credential: 'AI visibility consultant'"
+          ]
+        },
+        "social_proof": {
+          "enabled": true,
+          "cues": [
+            "Seen this pattern: 'We've seen this pattern locally'",
+            "Others like you: 'Similar practices in your area'"
+          ]
+        },
+        "loss_aversion": {
+          "enabled": false,
+          "cues": []
+        },
+        "reciprocity": {
+          "enabled": true,
+          "cues": [
+            "Free offer: 'Quick benchmark' or '15-min walkthrough'"
+          ]
+        },
+        "commitment": {
+          "enabled": true,
+          "cues": [
+            "Low-friction question: 'Have you noticed a shift in where your leads come from?'"
+          ]
+        },
+        "cognitive_fluency": {
+          "enabled": true,
+          "rules": [
+            "Ultra-short paragraphs (1-2 sentences)",
+            "No technical jargon",
+            "Simple, direct language"
+          ]
+        }
+      },
+      "disclaimer_templates": {
+        "simulated_competitor": "This is a preview estimate based on public data.",
+        "simulated_kg": "Preview estimate—full analysis available on call.",
+        "simulated_audit": "Preview estimate based on public data."
+      },
+      "allowed_claims": {
+        "must_say_estimate": true,
+        "must_say_simulated": false,
+        "must_say_preview": true,
+        "prohibited_claims": [
+          "definitive",
+          "confirmed",
+          "verified",
+          "guaranteed"
+        ]
+      }
+    }
+  },
+  "sequence_progression": {
+    "email_1": {
+      "route": "varies",
+      "purpose": "Route-specific opener",
+      "delay_days": 0
+    },
+    "email_2": {
+      "route": "both",
+      "purpose": "Reciprocity - offer 1-page report or checklist",
+      "delay_days": 3,
+      "subject_template": "Following up: {company_name} AI visibility report",
+      "body_template": "Hi {lead_name},\n\nI mentioned {competitor_name} in my last email. I've prepared a quick 1-page report showing how to close the visibility gap.\n\nWould you like me to send it?\n\nBest,\n{from_name}"
+    },
+    "email_3": {
+      "route": "both",
+      "purpose": "Commitment question - 'Should I send the steps?'",
+      "delay_days": 5,
+      "subject_template": "Quick question about {company_name}",
+      "body_template": "Hi {lead_name},\n\nJust checking in—should I send you the step-by-step guide to publishing to Wikidata knowledge graph?\n\nIt's a simple checklist that takes about 15 minutes to review.\n\nBest,\n{from_name}"
+    },
+    "email_4": {
+      "route": "both",
+      "purpose": "Authority + social proof + simple CTA",
+      "delay_days": 7,
+      "subject_template": "Last note: {company_name} visibility",
+      "body_template": "Hi {lead_name},\n\nLast note: Similar practices in {location} have seen 2-3x more referrals after optimizing their AI visibility.\n\nHappy to show you how in a quick 15-min call.\n\nBest,\n{from_name}"
+    }
+  },
+  "disclaimer_injection_rules": {
+    "when_to_include": [
+      "simulated_competitor_data is true",
+      "simulated_kg_presence is true",
+      "simulated_audit_data is true"
+    ],
+    "placement": "end_of_email",
+    "format": "concise_one_liner",
+    "tone": "transparent_not_apologetic"
+  }
+}
+

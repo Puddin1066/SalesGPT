@@ -1,0 +1,24 @@
+{
+  "name": "salesgpt-tests",
+  "version": "1.0.0",
+  "description": "Test configuration for SalesGPT integration tests",
+  "private": true,
+  "scripts": {
+    "test": "vitest",
+    "test:integration": "vitest run tests/integration",
+    "test:apollo": "vitest run tests/integration/apollo.integration.test.ts",
+    "test:hubspot": "vitest run tests/integration/hubspot.integration.test.ts",
+    "test:flow": "vitest run tests/integration/apollo_hubspot_flow.integration.test.ts",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "axios": "^1.6.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "dotenv": "^16.3.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
+

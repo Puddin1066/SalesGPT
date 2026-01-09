@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # Mock API Server
+  mock-api:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.mock-api
+    container_name: mock-api-server
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - salesgpt-network
+
+  # Backend API (Webhook Handler + Services)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: salesgpt-backend
+    env_file:
+      - .env
+    environment:
+      - USE_MOCK_APIS=${USE_MOCK_APIS:-true}
+      - MOCK_API_URL=http://mock-api:8001
+      - APOLLO_API_URL=${APOLLO_API_URL:-http://mock-api:8001}
+      - SMARTLEAD_API_URL=${SMARTLEAD_API_URL:-http://mock-api:8001}
+      - HUBSPOT_API_URL=${HUBSPOT_API_URL:-http://mock-api:8001}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mock-api
+      - db
+    volumes:
+      - ./salesgpt.db:/app/salesgpt.db
+    networks:
+      - salesgpt-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database (SQLite in volume, or PostgreSQL for production)
+  db:
+    image: postgres:15-alpine
+    container_name: salesgpt-db
+    environment:
+      - POSTGRES_DB=salesgpt
+      - POSTGRES_USER=salesgpt
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-salesgpt_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - salesgpt-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salesgpt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Background Queue Builder Worker
+  queue-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: salesgpt-queue-builder
+    env_file:
+      - .env
+    environment:
+      - USE_MOCK_APIS=${USE_MOCK_APIS:-true}
+      - MOCK_API_URL=http://mock-api:8001
+    command: python scripts/start_queue_builder.py
+    depends_on:
+      - backend
+      - db
+    volumes:
+      - ./salesgpt.db:/app/salesgpt.db
+    networks:
+      - salesgpt-network
+    restart: unless-stopped
+
+  # Streamlit Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.dashboard
+    container_name: salesgpt-dashboard
+    env_file:
+      - .env
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+      - db
+    volumes:
+      - ./salesgpt.db:/app/salesgpt.db
+    networks:
+      - salesgpt-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  salesgpt-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+

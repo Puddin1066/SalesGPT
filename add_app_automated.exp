@@ -1,0 +1,37 @@
+#!/usr/bin/expect -f
+# Add app to HubSpot project
+
+set timeout 60
+
+cd /Users/JJR/SalesGPT/SalesGPT-Integration
+
+spawn hs project add
+
+expect {
+    "Choose how to distribute" {
+        send "\x1B[B\r"  # Arrow down to select "Privately"
+        exp_continue
+    }
+    "Choose your authentication type" {
+        send "\r"  # Select "Static Auth" (first option)
+        exp_continue
+    }
+    "Select which features" {
+        send "\r"  # No features, just press enter
+        exp_continue
+    }
+    "successfully" {
+        puts "App added successfully"
+        exp_continue
+    }
+    eof {
+        puts "Process completed"
+    }
+    timeout {
+        puts "Timeout"
+        exit 1
+    }
+}
+
+expect eof
+
