@@ -1,0 +1,33 @@
+🎯 UPDATED: HubSpot Free Tier Reality
+
+REALITY CHECK:
+===============
+✅ CRM API works (properties, contacts, analytics)
+❌ Marketing Email API requires paid tier
+❌ CMS API requires paid tier
+
+SOLUTION: Hybrid Approach
+==========================
+• API automates: Properties, imports, analytics (saves ~105 min)
+• HubSpot UI for: Email campaigns, landing pages (required on Free)
+• Still saves: 5-7 hours per campaign (35% reduction)
+
+NEXT ACTION (5 minutes):
+========================
+1. Read: setup/configure_hubspot_scopes.md
+2. Add scopes:
+   - crm.schemas.contacts.write
+   - crm.objects.contacts.read
+   - crm.objects.contacts.write
+3. Update .env.local with new token
+4. Verify:
+   python3 chatgpt-native-stack/setup/check_hubspot_scopes.py
+
+Then run CRM automation:
+========================
+python3 chatgpt-native-stack/setup/create_hubspot_properties.py
+python3 chatgpt-native-stack/setup/verify_hubspot_properties.py
+
+Email/pages done in HubSpot UI (see REALISTIC_WORKFLOW.md)
+
+Time saved: 5-7 hours (35%) - Still worth it!
