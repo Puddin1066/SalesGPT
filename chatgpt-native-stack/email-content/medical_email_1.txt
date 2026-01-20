@@ -1,0 +1,16 @@
+Is {{company}} Invisible to Patients?
+Unlock {{company}}'s AI Visibility Today
+
+Dear {{firstname}},
+
+In an era where 64% of patients turn to AI platforms like ChatGPT to choose their medical providers, visibility is more crucial than ever. Yet, many local practices in {{city}} are facing a significant challenge – they're not showing up in AI-driven searches. This oversight might be the barrier between your clinic and its potential patients.
+
+At {{company}}, how confident are you that your practice stands out in AI recommendations compared to your competitors? Our solution, GemFlush, specializes in conducting an AI Visibility Audit, revealing how your business appears on platforms like ChatGPT, Claude, and Gemini. More importantly, it benchmarks your online presence against your competitors, offering actionable insights to enhance your visibility.
+
+Imagine the impact of ensuring that when potential patients search, {{company}} is the name they find. Let's make this a reality.
+
+Explore how GemFlush can transform your visibility: [Link to landing page]
+
+Best regards,
+
+[Your Name]

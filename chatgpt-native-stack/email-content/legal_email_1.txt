@@ -1,0 +1,18 @@
+Is Your Firm Invisible to Clients?
+Unlock AI Visibility for {{company}}
+
+Dear {{firstname}},
+
+In today's rapidly evolving legal landscape, staying ahead means being visible where it counts. A staggering 57% of your potential clients now use AI tools like ChatGPT, Claude, and Gemini for legal research. But, is {{company}} easily found in these searches?
+
+For many law firms, especially in {{city}}, the answer is no. This invisibility is not just a minor inconvenience; it's a major barrier to acquiring clients who are increasingly reliant on AI for legal assistance.
+
+GemFlush is designed to change that. Our AI Visibility Audit tool specifically evaluates how your firm appears in AI-driven platforms compared to your competitors, providing actionable insights to enhance your online presence.
+
+Don't let {{company}} be overshadowed. Discover how you can stand out in the AI era.
+
+[Link to landing page]
+
+Warm regards,
+
+[Your Name]

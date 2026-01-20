@@ -1,0 +1,98 @@
+================================================================================
+API CONNECTION TEST REPORT
+================================================================================
+Generated: 2026-01-18T09:57:53.062009
+
+SUMMARY
+--------------------------------------------------------------------------------
+Total APIs Tested: 5
+✅ Connected: 3
+⚠️  No Credentials: 0
+❌ Errors: 1
+
+================================================================================
+APOLLO.IO API
+================================================================================
+Status: ❌ error
+
+Rate Limits:
+  Known Limits:
+    - source: Apollo API documentation
+    - note: Rate limits vary by plan. Check your Apollo dashboard for specific limits.
+
+Budget Constraints:
+  - credit_consumption:
+    - search_leads: Plan-dependent (may be free on some plans)
+    - enrich_person: 1 credit per person
+    - enrich_organization: 1 credit per organization
+    - bulk_enrich_people: 1 credit per person matched
+    - bulk_enrich_organizations: 1 credit per organization enriched
+
+Errors:
+  ❌ HTTP None: 403 Client Error: Forbidden for url: https://api.apollo.io/v1/mixed_people/search
+
+================================================================================
+OPENAI API
+================================================================================
+Status: ✅ connected
+
+Rate Limits:
+  Known Limits:
+    - source: OpenAI API documentation
+    - tier_1: 500 RPM, 200K TPM (requests/min, tokens/min)
+    - tier_2: 5,000 RPM, 2M TPM
+    - tier_3: 10,000 RPM, 5M TPM
+    - note: Limits vary by account tier and model
+
+Budget Constraints:
+  - tokens_used:
+    - prompt_tokens: 11
+    - completion_tokens: 1
+    - total_tokens: 12
+  - pricing:
+    - gpt-3.5-turbo: ~$0.0015 per 1K tokens (input + output)
+    - gpt-4: Higher cost - check OpenAI pricing page
+    - note: Pay-per-use model - costs accumulate with usage
+
+================================================================================
+SMARTLEAD.AI API
+================================================================================
+Status: ✅ connected
+
+Rate Limits:
+  Known Limits:
+    - source: Smartlead API documentation
+    - note: Rate limits vary by subscription plan
+
+Budget Constraints:
+  - pricing:
+    - model: Subscription-based
+    - note: Costs vary by plan - check Smartlead pricing
+
+================================================================================
+HUBSPOT API
+================================================================================
+Status: ✅ connected
+
+Rate Limits:
+  Known Limits:
+    - free_tier: 100 requests per 10 seconds, 250,000 requests per day
+    - professional_tier: 150 requests per 10 seconds, 500,000 requests per day
+    - source: HubSpot API documentation
+
+Budget Constraints:
+  - pricing:
+    - free_tier: Available - API access works on free tier
+    - note: Some advanced features require paid plans
+
+================================================================================
+GEMFLUSH API
+================================================================================
+Status: 🔄 simulation_mode
+
+Budget Constraints:
+  - pricing:
+    - note: Contact alex@gemflush.com for API access and pricing
+
+Warnings:
+  ⚠️  Using simulation mode - real API not configured

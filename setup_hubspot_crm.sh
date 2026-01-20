@@ -29,3 +29,5 @@ echo "Or manually edit .env and set:"
 echo "   HUBSPOT_API_KEY=your-token-here"
 echo ""
 
+
+

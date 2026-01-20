@@ -97,3 +97,5 @@ print(f'✅ Contact created: {contact_id}')
 - Run: `python3 verify_hubspot_token.py` for detailed diagnostics
 - Check that `.env` file has `HUBSPOT_API_KEY=` (not `HUBSPOT_PAT=`)
 
+
+

@@ -183,3 +183,5 @@ class TestRealAPIWithAutomation:
             # Would use real API here
             print("✅ Real API key available (would use real API)")
 
+
+

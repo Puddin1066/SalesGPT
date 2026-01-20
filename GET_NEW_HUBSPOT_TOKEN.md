@@ -74,3 +74,5 @@ If they're the same, you didn't regenerate - you just activated the old one.
 - Check for extra spaces or line breaks
 - Verify the scopes are correct
 
+
+

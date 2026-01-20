@@ -172,3 +172,5 @@ if lead.metadata.get("score", 0) >= 15:
 ✅ **Data stored in both StateManager (local) and HubSpot (cloud)**
 ✅ **Ready for sales pipeline management and team collaboration**
 
+
+

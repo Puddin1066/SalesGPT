@@ -53,9 +53,10 @@ class DatabaseManager:
             echo=False  # Set to True for SQL query logging
         )
         
-        # Enable foreign key constraints for SQLite
+        # Enable foreign key constraints for SQLite only
+        # Note: This listener is registered per-engine, so it only applies to this engine
         if self.database_url.startswith("sqlite"):
-            @event.listens_for(Engine, "connect")
+            @event.listens_for(self._engine, "connect")
             def set_sqlite_pragma(dbapi_conn, connection_record):
                 cursor = dbapi_conn.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
@@ -142,4 +143,6 @@ def get_db_session(database_url: str) -> Generator[Session, None, None]:
     
     with _db_manager.session() as session:
         yield session
+
+
 

@@ -1,0 +1,49 @@
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "GemFlush",
+  "url": "https://gemflush.com",
+  "logo": "https://gemflush.com/logo.png",
+  "description": "AI-powered visibility audit platform that helps local service businesses measure their online discoverability compared to competitors. Provides objective, quantifiable metrics on search visibility, local presence, and online discoverability gaps.",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.5",
+    "reviewCount": "10",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  "featureList": [
+    "AI-powered visibility analysis",
+    "Competitive benchmarking",
+    "Multi-platform tracking",
+    "Evidence-based insights",
+    "Industry-specific analysis"
+  ],
+  "audience": {
+    "@type": "BusinessAudience",
+    "audienceType": "Local Service Businesses",
+    "geographicArea": {
+      "@type": "Country",
+      "name": "United States"
+    }
+  },
+  "provider": {
+    "@type": "Organization",
+    "name": "GemFlush",
+    "url": "https://gemflush.com",
+    "sameAs": [
+      "https://www.linkedin.com/company/gemflush",
+      "https://twitter.com/gemflush"
+    ]
+  },
+  "keywords": "visibility audit, online discoverability, competitive analysis, local SEO, search visibility, marketing analytics"
+}
+

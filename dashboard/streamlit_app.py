@@ -293,12 +293,16 @@ with tab2:
     replied_leads = [l for l in all_leads if l.get("reply_received_at")]
     booked_leads = [l for l in all_leads if l.get("booked_at")]
     closed_leads = [l for l in all_leads if l.get("status") == "closed"]
+    free_signup_leads = [l for l in all_leads if l.get("free_signup_at")]
+    paid_pro_leads = [l for l in all_leads if l.get("paid_pro_at")]
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Emails Sent", len(sent_leads))
     col2.metric("Reply Rate", f"{len(replied_leads)/len(sent_leads)*100:.1f}%" if sent_leads else "0%")
     col3.metric("Booking Rate", f"{len(booked_leads)/len(sent_leads)*100:.1f}%" if sent_leads else "0%")
     col4.metric("Close Rate", f"{len(closed_leads)/len(sent_leads)*100:.1f}%" if sent_leads else "0%")
+    col5.metric("Free Signups", len(free_signup_leads))
+    col6.metric("Paid Pro", len(paid_pro_leads))
     
     st.markdown("---")
     
@@ -359,7 +363,7 @@ with tab2:
     
     niche_dimension = st.selectbox(
         "Analyze by",
-        ["specialty", "location", "score_tier", "elm_route"]
+        ["market", "specialty", "persona", "location", "score_tier", "elm_route"]
     )
     
     niche_data = services['metrics'].get_niche_performance(niche_dimension, days_back)
@@ -370,13 +374,15 @@ with tab2:
         st.dataframe(df_niches, use_container_width=True)
         
         # Bar chart
+        y_cols = ["reply_rate", "free_signup_rate", "paid_pro_rate", "booking_rate", "close_rate"]
+        y_cols = [c for c in y_cols if c in df_niches.columns]
         fig = px.bar(
-            df_niches,
+            df_niches.head(30),
             x="niche",
-            y=["reply_rate", "booking_rate", "close_rate"],
-            title=f"Performance by {niche_dimension.title()}",
+            y=y_cols,
+            title=f"Performance by {niche_dimension.title()} (Top 30 by ROI Score)",
             barmode="group",
-            height=400
+            height=450
         )
         
         st.plotly_chart(fig, use_container_width=True)
@@ -386,10 +392,6 @@ with tab2:
 # TAB 3: Apollo A/B Testing
 with tab3:
     st.title("🔍 Apollo Lead Sourcing A/B Testing")
-    
-    if not container:
-        st.error("⚠️ Services not initialized. Apollo A/B testing unavailable.")
-        st.stop()
     
     services = get_services()
     if not services:
@@ -402,6 +404,7 @@ with tab3:
     col1, col2, col3 = st.columns(3)
     
     all_configs = apollo_ab.test_configs
+    state_mgr = services['state_mgr']
     tested_configs = sum(
         1 for c in all_configs
         if len(state_mgr.get_all_leads_by_config(c.to_code())) >= 10

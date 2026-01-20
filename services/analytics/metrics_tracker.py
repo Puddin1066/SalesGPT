@@ -168,6 +168,10 @@ class MetricsTracker:
             for data in recent_leads:
                 if dimension == "specialty":
                     key = data.get("specialty", "Unknown")
+                elif dimension == "market":
+                    key = data.get("market", "Unknown")
+                elif dimension == "persona":
+                    key = data.get("persona", "Unknown")
                 elif dimension == "location":
                     key = data.get("location", "Unknown")
                 elif dimension == "score_tier":
@@ -187,6 +191,8 @@ class MetricsTracker:
                 replied = sum(1 for l in leads if l.get("reply_received_at"))
                 booked = sum(1 for l in leads if l.get("booked_at"))
                 closed = sum(1 for l in leads if l.get("status") == "closed")
+                free_signed_up = sum(1 for l in leads if l.get("free_signup_at"))
+                paid_pro = sum(1 for l in leads if l.get("paid_pro_at"))
                 
                 results.append({
                     "niche": niche_name,
@@ -194,7 +200,15 @@ class MetricsTracker:
                     "reply_rate": round(replied / sent * 100, 2) if sent > 0 else 0,
                     "booking_rate": round(booked / sent * 100, 2) if sent > 0 else 0,
                     "close_rate": round(closed / sent * 100, 2) if sent > 0 else 0,
-                    "roi_score": round((closed / sent * 100) * 5, 2) if sent > 0 else 0
+                    "free_signup_rate": round(free_signed_up / sent * 100, 2) if sent > 0 else 0,
+                    "paid_pro_rate": round(paid_pro / sent * 100, 2) if sent > 0 else 0,
+                    # ROI proxy: weight paid_pro highest, then free signup, then close
+                    "roi_score": round(
+                        ((paid_pro / sent) * 100) * 10
+                        + ((free_signed_up / sent) * 100) * 2
+                        + ((closed / sent) * 100) * 5,
+                        2
+                    ) if sent > 0 else 0
                 })
             
             results.sort(key=lambda x: x["roi_score"], reverse=True)

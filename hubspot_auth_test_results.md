@@ -94,3 +94,5 @@ cat ~/.hscli/config.yml | grep -i "access\|token"
 2. ⏳ Update .env with your refreshed Personal Access Key
 3. ✅ Run verification script to confirm it works
 
+
+

@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-01-18T09:57:53.062009",
+  "apis": {
+    "apollo": {
+      "name": "Apollo.io",
+      "status": "error",
+      "rate_limits": {
+        "known_limits": {
+          "source": "Apollo API documentation",
+          "note": "Rate limits vary by plan. Check your Apollo dashboard for specific limits."
+        }
+      },
+      "budget_constraints": {
+        "credit_consumption": {
+          "search_leads": "Plan-dependent (may be free on some plans)",
+          "enrich_person": "1 credit per person",
+          "enrich_organization": "1 credit per organization",
+          "bulk_enrich_people": "1 credit per person matched",
+          "bulk_enrich_organizations": "1 credit per organization enriched"
+        }
+      },
+      "errors": [
+        "HTTP None: 403 Client Error: Forbidden for url: https://api.apollo.io/v1/mixed_people/search"
+      ],
+      "warnings": [],
+      "credentials_present": true,
+      "search_test": {
+        "success": false,
+        "status_code": null
+      }
+    },
+    "openai": {
+      "name": "OpenAI",
+      "status": "connected",
+      "rate_limits": {
+        "known_limits": {
+          "source": "OpenAI API documentation",
+          "tier_1": "500 RPM, 200K TPM (requests/min, tokens/min)",
+          "tier_2": "5,000 RPM, 2M TPM",
+          "tier_3": "10,000 RPM, 5M TPM",
+          "note": "Limits vary by account tier and model"
+        }
+      },
+      "budget_constraints": {
+        "tokens_used": {
+          "prompt_tokens": 11,
+          "completion_tokens": 1,
+          "total_tokens": 12
+        },
+        "pricing": {
+          "gpt-3.5-turbo": "~$0.0015 per 1K tokens (input + output)",
+          "gpt-4": "Higher cost - check OpenAI pricing page",
+          "note": "Pay-per-use model - costs accumulate with usage"
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "credentials_present": true,
+      "completion_test": {
+        "success": true,
+        "response_time_ms": 1448.01,
+        "tokens_used": 12
+      }
+    },
+    "smartlead": {
+      "name": "Smartlead.ai",
+      "status": "connected",
+      "rate_limits": {
+        "known_limits": {
+          "source": "Smartlead API documentation",
+          "note": "Rate limits vary by subscription plan"
+        }
+      },
+      "budget_constraints": {
+        "pricing": {
+          "model": "Subscription-based",
+          "note": "Costs vary by plan - check Smartlead pricing"
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "credentials_present": true,
+      "mailboxes_test": {
+        "success": true,
+        "mailboxes_count": 0,
+        "response_time_ms": 397.43
+      }
+    },
+    "hubspot": {
+      "name": "HubSpot",
+      "status": "connected",
+      "rate_limits": {
+        "known_limits": {
+          "free_tier": "100 requests per 10 seconds, 250,000 requests per day",
+          "professional_tier": "150 requests per 10 seconds, 500,000 requests per day",
+          "source": "HubSpot API documentation"
+        }
+      },
+      "budget_constraints": {
+        "pricing": {
+          "free_tier": "Available - API access works on free tier",
+          "note": "Some advanced features require paid plans"
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "credentials_present": true,
+      "auth_method": "private_app",
+      "contact_test": {
+        "success": true,
+        "contact_found": false,
+        "response_time_ms": 677.49
+      }
+    },
+    "gemflush": {
+      "name": "GEMflush",
+      "status": "simulation_mode",
+      "rate_limits": {},
+      "budget_constraints": {
+        "pricing": {
+          "note": "Contact alex@gemflush.com for API access and pricing"
+        }
+      },
+      "errors": [],
+      "warnings": [
+        "Using simulation mode - real API not configured"
+      ],
+      "credentials_present": true,
+      "using_real_api": false,
+      "using_simulation": true,
+      "audit_test": {
+        "success": true,
+        "response_time_ms": 1797.82,
+        "has_visibility_score": true,
+        "source": "unknown"
+      }
+    }
+  }
+}

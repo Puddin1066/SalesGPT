@@ -18,3 +18,5 @@ else
     echo "Try running manually: hs project create --platform-version 2025.1"
 fi
 
+
+

@@ -1,0 +1,15 @@
+Is Your Listing Invisible to Buyers?
+Ever Googled Yourself on ChatGPT?
+
+Dear {{firstname}},
+
+Did you know that a staggering 71% of home buyers now use platforms like ChatGPT for property research? In today's rapidly evolving market, the visibility of your listings and agents in AI search results is crucial. Unfortunately, many in the {{city}} real estate scene are facing a common, yet overlooked challenge: their properties are virtually invisible to potential buyers on these platforms.
+
+This is where GemFlush comes in. Our AI Visibility Audit tool is designed to help businesses like {{company}} stand out in AI-driven searches across ChatGPT, Claude, and Gemini. We provide actionable insights, ensuring your listings grab the attention they deserve.
+
+Don't let your properties be the ones that potential buyers never find. Let's change the narrative.
+
+Discover how: [Link to landing page]
+
+Best,
+[Your Name]

@@ -205,3 +205,5 @@ After setup:
 3. Monitor pipeline stages as leads progress
 4. Use HubSpot reports for sales analytics
 
+
+

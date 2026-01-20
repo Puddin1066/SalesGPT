@@ -79,3 +79,5 @@ You should see:
 - Check Connected Apps: Settings → Integrations → Connected Apps
 - The token should be in the app's Auth tab after installation
 
+
+

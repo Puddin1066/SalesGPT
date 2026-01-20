@@ -15,6 +15,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import asyncio
+from datetime import datetime
+
+import stripe
 
 from salesgpt.config import get_settings
 from salesgpt.container import ServiceContainer
@@ -26,6 +29,10 @@ settings = get_settings()
 # Initialize container and orchestrator
 container = ServiceContainer(settings)
 orchestrator = container.orchestrator
+
+# Configure Stripe (optional)
+if settings.stripe_api_key:
+    stripe.api_key = settings.stripe_api_key
 
 # Initialize FastAPI app
 app = FastAPI(title="ASSCH Webhook Handler")
@@ -53,6 +60,11 @@ class SmartleadWebhookPayload(BaseModel):
     sender_email: EmailStr
     sender_name: str = ""
     body: str
+
+
+class StripeWebhookAck(BaseModel):
+    """Simple response model for Stripe webhook acknowledgements."""
+    status: str
 
 
 def verify_webhook_signature(payload: bytes, signature: str, secret: str) -> bool:
@@ -141,7 +153,6 @@ async def handle_smartlead_webhook(request: Request):
         )
         
         # Track reply metrics for analytics
-        from datetime import datetime
         lead_state = orchestrator.state.get_lead_state(payload.sender_email)
         
         if lead_state:
@@ -181,6 +192,105 @@ async def handle_smartlead_webhook(request: Request):
             {"status": "error", "message": str(e)},
             status_code=500
         )
+
+
+@app.post("/webhook/stripe", response_model=StripeWebhookAck)
+@limiter.limit("200/minute")
+async def handle_stripe_webhook(request: Request):
+    """
+    Handle Stripe webhooks to record paid conversion events (paid Pro subscriptions).
+    
+    Success criterion (locked):
+    - event.type == invoice.paid
+    - invoice lines contain settings.stripe_pro_price_id_live
+    - Stripe Customer email matches lead.email
+    """
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(status_code=500, detail="Stripe webhook secret not configured")
+    if not settings.stripe_api_key:
+        raise HTTPException(status_code=500, detail="Stripe API key not configured")
+    if not settings.stripe_pro_price_id_live:
+        raise HTTPException(status_code=500, detail="STRIPE_PRO_PRICE_ID_LIVE not configured")
+
+    payload = await request.body()
+    sig_header = request.headers.get("Stripe-Signature")
+    if not sig_header:
+        raise HTTPException(status_code=400, detail="Missing Stripe-Signature header")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=sig_header,
+            secret=settings.stripe_webhook_secret,
+        )
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Stripe payload: {type(e).__name__}")
+
+    # Only care about invoice.paid for subscriptions
+    if event.get("type") != "invoice.paid":
+        return StripeWebhookAck(status="ignored")
+
+    invoice = event.get("data", {}).get("object", {})
+    if not invoice:
+        return StripeWebhookAck(status="ignored")
+
+    # Check if the paid invoice includes the Pro price
+    pro_price_id = settings.stripe_pro_price_id_live
+    lines = (invoice.get("lines") or {}).get("data") or []
+    has_pro_price = False
+    for line in lines:
+        price = ((line.get("price") or {}) if isinstance(line, dict) else {}) or {}
+        if price.get("id") == pro_price_id:
+            has_pro_price = True
+            break
+
+    if not has_pro_price:
+        return StripeWebhookAck(status="ignored")
+
+    # Map Stripe customer to lead via customer email (ground truth)
+    customer_id = invoice.get("customer")
+    if not customer_id:
+        return StripeWebhookAck(status="ignored")
+
+    try:
+        customer = stripe.Customer.retrieve(customer_id)
+        customer_email = (customer.get("email") or "").strip().lower()
+    except Exception:
+        # Don't fail the webhook; just ignore if we can't resolve customer email
+        return StripeWebhookAck(status="ignored")
+
+    if not customer_email:
+        return StripeWebhookAck(status="ignored")
+
+    # Update lead state in SalesGPT DB
+    lead_state = orchestrator.state.get_lead_state(customer_email)
+    if not lead_state:
+        # Lead not tracked in our system (could be organic). Ignore for A/B reward.
+        return StripeWebhookAck(status="ignored")
+
+    paid_amount = None
+    try:
+        # Stripe amounts are in cents
+        amount_paid = invoice.get("amount_paid")
+        if isinstance(amount_paid, (int, float)):
+            paid_amount = float(amount_paid) / 100.0
+    except Exception:
+        paid_amount = None
+
+    orchestrator.state.update_lead_state(
+        customer_email,
+        {
+            "paid_pro_at": datetime.utcnow(),
+            "paid_pro_price_id": pro_price_id,
+            "paid_pro_invoice_id": invoice.get("id"),
+            "paid_pro_amount": paid_amount,
+            "status": "paid_pro",
+        },
+    )
+
+    return StripeWebhookAck(status="ok")
 
 
 @app.get("/health")

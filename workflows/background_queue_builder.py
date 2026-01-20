@@ -7,6 +7,7 @@ Runs as background worker to keep review queue populated.
 import asyncio
 from datetime import datetime
 from typing import Dict, Optional
+import os
 from services.apollo.apollo_agent import ApolloAgent, Lead
 from services.salesgpt.salesgpt_wrapper import SalesGPTWrapper
 from services.crm.hubspot_agent import HubSpotAgent
@@ -15,6 +16,8 @@ from services.competitor.competitor_agent import CompetitorAgent
 from services.visibility.gemflush_agent import GEMflushAgent
 from services.scoring.geo_scorer import GEOScorer
 from state.state_manager import StateManager
+from services.segmentation.labeling import infer_market, infer_persona
+from services.outbound.landing_urls import build_market_landing_url
 
 
 class BackgroundQueueBuilder:
@@ -228,6 +231,22 @@ class BackgroundQueueBuilder:
             "email": lead.email,
             "website": lead.website
         }
+
+        # Segmentation labels (market + persona)
+        title = lead.metadata.get("title", "") if lead.metadata else ""
+        market = infer_market(lead.specialty, title=title, company_name=lead.company_name)
+        persona = infer_persona(title)
+
+        # Landing URL for Email 2+ (Email 1 should remain linkless for deliverability)
+        landing_base = os.getenv("GEMFLUSH_LANDING_BASE_URL", "https://www.gemflush.com")
+        utm_campaign = f"cold_{market}_{(lead.specialty or 'niche').lower().replace(' ', '_')}"
+        landing_url = build_market_landing_url(
+            base_url=landing_base,
+            market=market,
+            utm_source="cold_email",
+            utm_campaign=utm_campaign,
+            utm_content=email["variant_code"],
+        )
         
         competitor_dict = {
             "name": best_competitor.name,
@@ -304,6 +323,9 @@ class BackgroundQueueBuilder:
                 "website": lead.website,
                 "location": lead.location,
                 "specialty": lead.specialty,
+                "market": market,
+                "persona": persona,
+                "landing_url": landing_url,
                 # Apollo data
                 "apollo_person_id": lead.metadata.get("apollo_person_id", ""),
                 "apollo_organization_id": lead.metadata.get("apollo_organization_id", ""),
@@ -334,6 +356,7 @@ class BackgroundQueueBuilder:
                 "email_subject": email["subject"],
                 "email_body": email["body"],
                 "email_generated_at": datetime.now().isoformat(),
+                "email_sequence_step": 1,
                 # Evidence
                 "evidence": evidence,
                 "competitor": competitor_dict,
@@ -357,6 +380,8 @@ class BackgroundQueueBuilder:
                 "email_subject": email["subject"],
                 "email_body": email["body"],
                 "email_generated_at": datetime.now(),
+                "market": market,
+                "persona": persona,
                 "hubspot_contact_id": contact_id
             }
         )

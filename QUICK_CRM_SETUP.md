@@ -106,3 +106,5 @@ Then check HubSpot → Contacts to see the test contact.
 
 Once verified, your CRM tracking is live. Every time you run the pipeline, HubSpot will automatically track all leads and their progression through your sales funnel.
 
+
+

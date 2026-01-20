@@ -74,3 +74,5 @@ Your app is configured as **"static" token** type, but you have:
 
 Both work! Choose based on your needs.
 
+
+

@@ -80,3 +80,5 @@ If the CLI steps seem too complex:
 
 For your use case (just API access), the **UI method is faster and simpler**. The CLI method is better if you plan to build extensions or serverless functions later.
 
+
+

@@ -5,6 +5,7 @@ Helper functions for manual email review and approval.
 """
 from datetime import datetime
 from typing import Dict, List, Optional
+import os
 from state.state_manager import StateManager
 from services.outbound.smartlead_agent import SmartleadAgent
 from services.crm.hubspot_agent import HubSpotAgent
@@ -54,19 +55,16 @@ def approve_and_send(
         True if successful, False otherwise
     """
     try:
-        # Send email via Smartlead
-        # Note: This assumes you have a campaign_id set up
-        # For manual sending, you might need to use Smartlead's direct send API
-        
-        # For now, we'll update the status to "sent" and mark the timestamp
-        # The actual sending would be handled by Smartlead integration
+        # Dry-run mode: do not actually send until you're ready to go live.
+        # This lets you build the queue + analytics scaffolding safely on free tiers.
+        dry_run = os.getenv("OUTBOUND_DRY_RUN", "true").lower() in ["true", "1", "t", "yes"]
         
         # Update database
         state_manager.update_lead_state(
             lead["email"],
             {
-                "status": "sent",
-                "email_sent_at": datetime.now(),
+                "status": "approved" if dry_run else "sent",
+                "email_sent_at": None if dry_run else datetime.now(),
                 "email_subject": lead.get("email_subject", ""),
                 "email_body": lead.get("email_body", "")
             }
@@ -76,7 +74,7 @@ def approve_and_send(
         if lead.get("hubspot_contact_id"):
             hubspot.update_pipeline_stage(
                 lead["hubspot_contact_id"],
-                "engaged"
+                "engaged" if not dry_run else "idle"
             )
         
         return True

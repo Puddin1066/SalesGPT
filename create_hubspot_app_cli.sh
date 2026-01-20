@@ -27,3 +27,5 @@ else
     echo "Try running manually: hs project create"
 fi
 
+
+

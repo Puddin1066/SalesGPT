@@ -156,3 +156,5 @@ Error: Authentication credentials not found
 
 **To Fix:** Install app → Get token → Update .env → Verify
 
+
+

@@ -4,6 +4,7 @@ Centralized configuration management using Pydantic Settings.
 All environment variables and configuration are managed here.
 """
 from typing import Optional
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +16,19 @@ class Settings(BaseSettings):
     """
     
     # Database Configuration
-    database_url: str = "sqlite:///./salesgpt.db"
+    # NOTE: We prefer SALESGPT_DATABASE_URL for this app's internal state DB so
+    # DATABASE_URL can be used by other systems (e.g., Supabase pooler).
+    database_url: str = Field(
+        default="sqlite:///./salesgpt.db",
+        validation_alias=AliasChoices("SALESGPT_DATABASE_URL", "DATABASE_URL"),
+    )
+    
+    # External data sources (optional)
+    # Supabase Postgres (pooler) for signup detection (auth.users)
+    supabase_database_url: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_DATABASE_URL", "DATABASE_URL"),
+    )
     
     # API Keys - Required
     openai_api_key: str = ""
@@ -28,6 +41,20 @@ class Settings(BaseSettings):
     cal_booking_link: Optional[str] = None
     gemflush_api_key: Optional[str] = None
     gemflush_api_url: Optional[str] = None
+    
+    # Stripe (optional, used for paid conversion tracking)
+    stripe_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("STRIPE_API_KEY", "STRIPE_SECRET_KEY"),
+    )
+    stripe_webhook_secret: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET_LIVE"),
+    )
+    stripe_pro_price_id_live: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("STRIPE_PRO_PRICE_ID_LIVE",),
+    )
     
     # HubSpot OAuth (optional, alternative to access_token)
     hubspot_client_id: Optional[str] = None

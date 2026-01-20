@@ -28,6 +28,9 @@ class Lead(Base):
     website = Column(String(500))
     location = Column(String(255))
     specialty = Column(String(255))
+    # Segmentation labels (new)
+    market = Column(String(50), nullable=True, index=True)   # medical|legal|realestate|agencies
+    persona = Column(String(100), nullable=True, index=True) # e.g. owner|partner|manager|marketing
     status = Column(String(50), nullable=False, index=True, default="idle")
     
     # Apollo identifiers
@@ -54,6 +57,13 @@ class Lead(Base):
     booked_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, nullable=True)
     deal_value = Column(Float, nullable=True)
+    
+    # Conversion tracking (new)
+    free_signup_at = Column(DateTime, nullable=True, index=True)
+    paid_pro_at = Column(DateTime, nullable=True, index=True)
+    paid_pro_price_id = Column(String(255), nullable=True, index=True)
+    paid_pro_invoice_id = Column(String(255), nullable=True)
+    paid_pro_amount = Column(Float, nullable=True)
     
     # Metadata stored as JSON (renamed from 'metadata' to avoid SQLAlchemy conflict)
     lead_metadata = Column("metadata", JSON, default=dict)

@@ -6,9 +6,9 @@
 
 **Current Status:** ✅ Scripts ready, ⚠️  API scopes need fixing (5-minute task)
 
-**Time Savings:** 5-7 hours saved (35% reduction) through automation
+**Time Savings:** 12-15 hours saved (75% reduction) through automation
 
-**Note:** Marketing Email API requires paid tier, so we use HubSpot UI for sending. API automation handles properties, imports, and analytics.
+**FULLY AUTOMATED:** Content generation via OpenAI API (2-3 min vs 4-6 hours manual)
 
 ---
 

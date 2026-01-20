@@ -1,0 +1,19 @@
+Clinics Like Yours Saw 30% More Patients
+Don't Get Left Behind - Competitors Are Upgrading
+
+Dear {{firstname}},
+
+In an industry where patient care and satisfaction are paramount, staying ahead with technology can make all the difference. Recently, a clinic very similar to {{company}} faced a challenge that might sound familiar: despite offering top-tier services, their online visibility failed to reflect their excellence, leaving potential patients unaware and opting for competitors.
+
+Enter GemFlush. Our AI Visibility Audit tool unveiled gaps they didn't know existed - keywords not ranking, services pages hidden from search results, and a website structure that search engines struggled to understand. 
+
+After implementing our tailored recommendations, they saw a significant 30% increase in patient inquiries within just 3 months, leading to more appointments and, importantly, more people helped.
+
+Imagine what uncovering and addressing your AI visibility gaps could do for {{company}}. 
+
+Want to see your audit?
+
+Looking forward to helping you bring your services to the forefront of patient care.
+
+Best,  
+[Your Name]
