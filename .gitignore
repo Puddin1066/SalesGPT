@@ -1,5 +1,7 @@
 # A.S.S.C.H. Assembly specific ignores
+.env
 .env.local
+*.db
 state/*.json
 state/conversation_states.json
 state/lead_states.json
