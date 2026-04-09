@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "artifact": "single_contact_test",
+    "disclaimer": "Enrichment is MOCK/manual seed only."
+  },
+  "profile": {
+    "enrichment_source": "MOCK_MANUAL_SEED",
+    "enriched_at": "2026-04-09T13:11:37.488060+00:00",
+    "email": "j.jayround@gmail.com",
+    "first_name": "J",
+    "persona_summary": "Solo entrepreneur focused on AI/IP therapeutic development",
+    "company_name": "Independent / stealth therapeutic venture",
+    "website": "",
+    "signals_used": [
+      "User-supplied: solo operator",
+      "User-supplied: AI + IP + therapeutic development focus",
+      "Inferred: high-stakes discovery (investors, partners, acquirers) increasingly use AI assistants"
+    ],
+    "gemflush_hypothesis": "Objective visibility vs named comparables (peers, programs, hubs) on AI-assisted surfaces may matter as much as classic SEO for capital and partnership conversations."
+  },
+  "email": {
+    "subject": "J, quick question — AI-visible footprint for your AI/IP therapeutic work?",
+    "body": "Hi J,\n\nI'm writing because you're building in a corner of biotech where credibility and discoverability compound: AI-driven therapeutic development plus IP — and often, as a solo founder, you're the brand people need to find.\n\nGemFlush (gemflush.com) is a B2B visibility-audit product. It focuses on objective, comparative signals: how a business or program shows up in AI-assisted discovery and related surfaces versus competitors or peer narratives — not vanity rankings, but evidence you can use in investor updates, partner conversations, and web positioning.\n\nWhy this might matter for you: when someone asks an assistant for background on a modality, a program, or \"who is working on X,\" answers skew toward entities that are unambiguous and well-represented in open and structured contexts. For therapeutics, that overlaps with how orgs, assets, and people are disambiguated — the same class of problem GemFlush helps teams measure before they pour months into content.\n\nI'm not claiming we've audited your properties; this is a single, direct note to see if a short benchmark (you vs a handful of comps you care about) would be useful. If yes, reply with your priority comparison set (2–3 names or links) and I'll keep the first pass tight.\n\nMore context: https://gemflush.com\n\nBest,\nGEMflush AI Visibility Team\nGemFlush\n\n(Reply to: jay@gemflush.com)\n\n---\nUnsubscribe: reply \"unsubscribe\""
+  }
+}
