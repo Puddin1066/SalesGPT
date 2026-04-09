@@ -42,8 +42,9 @@ class SalesGPTWrapper:
         self.model_name = model_name or os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613")
         self.verbose = verbose
         
-        # Check if tools should be enabled (default: True, but can be disabled via env var)
-        use_tools = os.getenv("SALESGPT_USE_TOOLS", "true").lower() == "true"
+        # Product-catalog RAG tools load Chroma + OpenAIEmbeddings (fragile with some openai/langchain-openai pairs).
+        # Email reply flows do not need them; enable explicitly with SALESGPT_USE_TOOLS=true.
+        use_tools = os.getenv("SALESGPT_USE_TOOLS", "false").lower() == "true"
         
         # Initialize SalesGPT API instance
         self.sales_api = SalesGPTAPI(
@@ -412,6 +413,25 @@ class SalesGPTWrapper:
         - Competitor has Wikidata Knowledge Graph: {competitive_analysis.get('competitor_has_kg', False)}
         """
         
+        # Add Wikidata-specific context if present
+        if competitive_analysis.get("wikidata_qid"):
+            qid = competitive_analysis["wikidata_qid"]
+            missing_props = competitive_analysis.get("missing_properties", [])
+            missing_text = ", ".join(missing_props[:3])
+            if len(missing_props) > 3:
+                missing_text += f", and {len(missing_props) - 3} more"
+            
+            wikidata_context = f"""
+        
+        Wikidata Entity Context:
+        - {company_name} has Wikidata entity {qid} (https://www.wikidata.org/wiki/{qid})
+        - Profile completeness: {competitive_analysis.get('lead_score', 0)}%
+        - Missing properties: {missing_text if missing_props else 'None'}
+        - These gaps reduce AI discoverability in ChatGPT, Claude, and Perplexity
+        - GemFlush can help complete the Wikidata profile to improve AI visibility
+        """
+            competitor_context += wikidata_context
+        
         # Build persuasion principles instructions
         principles = route_config.get("persuasion_principles", {})
         principle_instructions = []
@@ -480,6 +500,8 @@ class SalesGPTWrapper:
         4. Reference the specific location ({location})
         5. Make it personal and specific to their situation
         6. Professional but direct tone
+        {f"7. Acknowledge their existing Wikidata entity ({competitive_analysis.get('wikidata_qid')}) - shows they understand knowledge graphs" if competitive_analysis.get('wikidata_qid') else ""}
+        {f"8. Highlight missing properties ({', '.join(competitive_analysis.get('missing_properties', [])[:3])}) that impact AI discoverability" if competitive_analysis.get('missing_properties') else ""}
         
         Generate the email body only (no subject line needed).
         Keep it concise and follow the {route} route structure rules exactly.

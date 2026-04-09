@@ -265,7 +265,8 @@ class SmartleadAgent:
         self,
         thread_id: str,
         body: str,
-        subject: Optional[str] = None
+        subject: Optional[str] = None,
+        recipient_email: Optional[str] = None,
     ) -> bool:
         """
         Send a reply to an existing email thread.
@@ -274,6 +275,7 @@ class SmartleadAgent:
             thread_id: Email thread ID
             body: Reply body
             subject: Optional subject (uses original if not provided)
+            recipient_email: Optional; used by non-Smartlead adapters (e.g. Zoho Mail). Ignored here.
             
         Returns:
             True if successful, False otherwise

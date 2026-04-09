@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     apollo_api_key: str = ""
     smartlead_api_key: str = ""
-    hubspot_access_token: str = ""  # Private App access token
+    hubspot_access_token: str = Field(
+        default="",
+        validation_alias=AliasChoices("HUBSPOT_ACCESS_TOKEN", "HUBSPOT_API_KEY", "HUBSPOT_PAT"),
+    )  # Private App access token
     
     # API Keys - Optional
     cal_api_key: Optional[str] = None
@@ -57,15 +60,64 @@ class Settings(BaseSettings):
     )
     
     # HubSpot OAuth (optional, alternative to access_token)
-    hubspot_client_id: Optional[str] = None
-    hubspot_client_secret: Optional[str] = None
+    hubspot_client_id: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("HUBSPOT_CLIENT_ID", "HS_CLIENT_ID"),
+    )
+    hubspot_client_secret: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("HUBSPOT_CLIENT_SECRET", "HS_CLIENT_SECRET"),
+    )
     hubspot_refresh_token: Optional[str] = None
     
-    # Smartlead Configuration
-    smartlead_from_email: str = ""
-    smartlead_from_name: str = "ASSCH Team"
-    smartlead_reply_to: Optional[str] = None
-    smartlead_campaign_name: str = "ASSCH Outreach"
+    # Outbound email identity (used by Zoho Mail compat and, if enabled, Smartlead)
+    smartlead_from_email: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SMARTLEAD_FROM_EMAIL",
+            "OUTBOUND_FROM_EMAIL",
+            "ZOHO_MAIL_FROM",
+        ),
+    )
+    smartlead_from_name: str = Field(
+        default="ASSCH Team",
+        validation_alias=AliasChoices(
+            "SMARTLEAD_FROM_NAME",
+            "OUTBOUND_FROM_NAME",
+            "ZOHO_MAIL_FROM_NAME",
+        ),
+    )
+    smartlead_reply_to: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "SMARTLEAD_REPLY_TO",
+            "OUTBOUND_REPLY_TO",
+            "ZOHO_MAIL_REPLY_TO",
+        ),
+    )
+    smartlead_campaign_name: str = Field(
+        default="ASSCH Outreach",
+        validation_alias=AliasChoices("SMARTLEAD_CAMPAIGN_NAME", "OUTBOUND_CAMPAIGN_NAME"),
+    )
+    # When set, outbound pipelines reuse this campaign (no create / no new sequences from code)
+    smartlead_campaign_id: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices("SMARTLEAD_CAMPAIGN_ID"),
+    )
+    
+    # Marketing automation master switch (CLI scripts exit unless True or --force)
+    marketing_automation_enabled: bool = False
+    
+    # Zoho stack (CRM + Mail) — replaces HubSpot + Smartlead in ServiceContainer when true
+    use_zoho_stack: bool = False
+    zoho_client_id: Optional[str] = None
+    zoho_client_secret: Optional[str] = None
+    zoho_refresh_token: Optional[str] = None
+    zoho_accounts_domain: str = "https://accounts.zoho.com"
+    zoho_crm_api_base: str = "https://www.zohoapis.com/crm/v6"
+    zoho_mail_api_base: str = "https://mail.zoho.com"
+    zoho_mail_account_id: Optional[str] = None
+    zoho_mail_send_delay_seconds: float = 0.0
     
     # Webhook Security
     webhook_secret_key: str = ""  # Optional for development
@@ -94,6 +146,13 @@ class Settings(BaseSettings):
     ucb_exploration_parameter: float = 2.0
     default_batch_size: int = 50
     queue_refill_threshold: int = 20
+    
+    # SFA Configuration
+    sfa_min_adopter_score: float = 50.0
+    sfa_min_tier: str = "medium"
+    sfa_batch_size: int = 100
+    sfa_default_industry: str = "medical"  # legal, real_estate, medical
+    sfa_default_location: Optional[str] = None
     
     # Mock API Configuration
     use_mock_apis: bool = False

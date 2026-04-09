@@ -77,7 +77,16 @@ def setup_knowledge_base(
 
     llm = ChatLiteLLM(model_name="gpt-4-0125-preview", temperature=0)
 
-    embeddings = OpenAIEmbeddings()
+    try:
+        embeddings = OpenAIEmbeddings()
+    except Exception as e:
+        raise RuntimeError(
+            "OpenAIEmbeddings failed (common cause: openai>=1.55 with langchain-openai==0.0.2). "
+            "Fix: `pip install 'openai>=1.7,<1.55'` or upgrade langchain-openai, "
+            "or leave SALESGPT_USE_TOOLS=false (default) if you do not need product-catalog search. "
+            f"Original error: {e}"
+        ) from e
+
     docsearch = Chroma.from_texts(
         texts, embeddings, collection_name="product-knowledge-base"
     )

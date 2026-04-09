@@ -108,63 +108,82 @@ class BackgroundQueueBuilder:
         while True:
             iteration += 1
             print(f"\n━━━ Batch #{iteration} ━━━\n")
-            
-            # Check queue size
-            pending_count = self.state.count_leads_by_status("pending_review")
-            
-            if pending_count < 20:
-                print(f"📋 Queue low ({pending_count}), fetching leads...")
-                
-                # Get next Apollo config to test
-                apollo_config = self.apollo_ab.get_next_config_to_test()
-                params = apollo_config.to_apollo_params()
-                
-                print(f"🔍 Testing Apollo Config: {apollo_config.to_code()}")
-                print(f"   - Geography: {apollo_config.geography_strategy.value}")
-                print(f"   - Employee Range: {apollo_config.employee_range.value}")
-                print(f"   - Title Strategy: {apollo_config.title_strategy.value}")
-                print(f"   - Website Required: {apollo_config.require_website}")
-                
-                # Search Apollo with config
-                leads = self.apollo.search_leads(
-                    geography=apollo_config.geography_value or geography,
-                    specialty=apollo_config.specialty or specialty,
-                    min_employees=params["min_employees"],
-                    max_employees=params["max_employees"],
-                    has_website=params["has_website"],
-                    limit=batch_size
-                )
-                
-                if not leads:
-                    print("⚠️  No leads found. Waiting 5 minutes...")
-                    await asyncio.sleep(300)
-                    continue
-                
-                print(f"✅ Found {len(leads)} leads")
-                
-                # Score leads
-                scored_leads = self.apollo.score_leads(leads)
-                
-                # Process each lead
-                processed = 0
-                for lead in scored_leads:
-                    if lead.metadata.get("score", 0) < min_score:
-                        continue
-                    
-                    try:
-                        # Process lead: generate email, create HubSpot, store
-                        await self._process_lead(lead, apollo_config)
-                        processed += 1
-                    except Exception as e:
-                        print(f"⚠️  Error processing {lead.email}: {e}")
-                        continue
-                
-                print(f"✅ Processed {processed} leads, added to queue")
-            else:
-                print(f"✅ Queue sufficient ({pending_count} pending). Waiting 5 minutes...")
-            
-            # Wait before next iteration
+            await self.run_once(
+                geography=geography,
+                specialty=specialty,
+                batch_size=batch_size,
+                min_score=min_score,
+                queue_refill_threshold=20,
+            )
             await asyncio.sleep(300)  # 5 minutes
+
+    async def run_once(
+        self,
+        geography: str,
+        specialty: str,
+        batch_size: int = 50,
+        min_score: int = 10,
+        queue_refill_threshold: int = 20,
+        force: bool = False,
+    ) -> int:
+        """
+        Run a single refill pass: optionally pull Apollo leads, generate AI emails, HubSpot, DB.
+
+        When ``force`` is True, fetches and processes a batch even if the review queue is already
+        above ``queue_refill_threshold`` (for cron / one-shot jobs).
+
+        Returns:
+            Number of leads processed in this pass (0 if skipped or none found).
+        """
+        pending_count = self.state.count_leads_by_status("pending_review")
+
+        if not force and pending_count >= queue_refill_threshold:
+            print(f"✅ Queue sufficient ({pending_count} pending). Skipping fetch.")
+            return 0
+
+        if force or pending_count < queue_refill_threshold:
+            print(f"📋 Queue at {pending_count}, fetching leads...")
+
+        apollo_config = self.apollo_ab.get_next_config_to_test()
+        params = apollo_config.to_apollo_params()
+
+        print(f"🔍 Testing Apollo Config: {apollo_config.to_code()}")
+        print(f"   - Geography: {apollo_config.geography_strategy.value}")
+        print(f"   - Employee Range: {apollo_config.employee_range.value}")
+        print(f"   - Title Strategy: {apollo_config.title_strategy.value}")
+        print(f"   - Website Required: {apollo_config.require_website}")
+
+        leads = self.apollo.search_leads(
+            geography=apollo_config.geography_value or geography,
+            specialty=apollo_config.specialty or specialty,
+            min_employees=params["min_employees"],
+            max_employees=params["max_employees"],
+            has_website=params["has_website"],
+            limit=batch_size,
+        )
+
+        if not leads:
+            print("⚠️  No leads found.")
+            return 0
+
+        print(f"✅ Found {len(leads)} leads")
+
+        scored_leads = self.apollo.score_leads(leads)
+
+        processed = 0
+        for lead in scored_leads:
+            if lead.metadata.get("score", 0) < min_score:
+                continue
+
+            try:
+                await self._process_lead(lead, apollo_config)
+                processed += 1
+            except Exception as e:
+                print(f"⚠️  Error processing {lead.email}: {e}")
+                continue
+
+        print(f"✅ Processed {processed} leads, added to queue")
+        return processed
     
     async def _process_lead(
         self,
@@ -237,17 +256,6 @@ class BackgroundQueueBuilder:
         market = infer_market(lead.specialty, title=title, company_name=lead.company_name)
         persona = infer_persona(title)
 
-        # Landing URL for Email 2+ (Email 1 should remain linkless for deliverability)
-        landing_base = os.getenv("GEMFLUSH_LANDING_BASE_URL", "https://www.gemflush.com")
-        utm_campaign = f"cold_{market}_{(lead.specialty or 'niche').lower().replace(' ', '_')}"
-        landing_url = build_market_landing_url(
-            base_url=landing_base,
-            market=market,
-            utm_source="cold_email",
-            utm_campaign=utm_campaign,
-            utm_content=email["variant_code"],
-        )
-        
         competitor_dict = {
             "name": best_competitor.name,
             "location": best_competitor.location,
@@ -264,6 +272,17 @@ class BackgroundQueueBuilder:
             lead=lead_dict,
             evidence=evidence,
             competitor=competitor_dict
+        )
+
+        # Landing URL for Email 2+ (Email 1 should remain linkless for deliverability)
+        landing_base = os.getenv("GEMFLUSH_LANDING_BASE_URL", "https://www.gemflush.com")
+        utm_campaign = f"cold_{market}_{(lead.specialty or 'niche').lower().replace(' ', '_')}"
+        landing_url = build_market_landing_url(
+            base_url=landing_base,
+            market=market,
+            utm_source="cold_email",
+            utm_campaign=utm_campaign,
+            utm_content=email["variant_code"],
         )
         
         # 6. Create HubSpot contact with email content

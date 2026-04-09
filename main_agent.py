@@ -49,7 +49,8 @@ class ASSCHOrchestrator:
         scorer: GEOScorer,
         state: StateManager,
         ab_manager=None,
-        apollo_ab=None
+        apollo_ab=None,
+        campaign_name: Optional[str] = None,
     ):
         """
         Initialize orchestrator with injected dependencies.
@@ -80,7 +81,7 @@ class ASSCHOrchestrator:
         self.apollo_ab = apollo_ab
         
         # Configuration (will be loaded from settings via container)
-        self.campaign_name = "ASSCH Outreach"  # Default, can be overridden
+        self.campaign_name = campaign_name or "ASSCH Outreach"
         self.campaign_id = None
     
     async def run_daily_pipeline(
@@ -427,11 +428,18 @@ class ASSCHOrchestrator:
             Campaign ID
         """
         # Check if campaign exists (simplified - in production, query API)
-        # For now, create new campaign
-        
-        # Get settings from container (will be injected via settings)
+        # Reuse existing campaign when configured (sequences/mailboxes managed in Smartlead UI)
         from salesgpt.config import get_settings
         settings = get_settings()
+        
+        if settings.smartlead_campaign_id is not None and not getattr(
+            settings, "use_zoho_stack", False
+        ):
+            print(
+                f"✅ Using SMARTLEAD_CAMPAIGN_ID={settings.smartlead_campaign_id} "
+                "(skipping create & sequences)"
+            )
+            return settings.smartlead_campaign_id
         
         from_email = settings.smartlead_from_email
         from_name = settings.smartlead_from_name
@@ -515,7 +523,9 @@ class ASSCHOrchestrator:
         conversation_history = self.state.get_conversation_history(thread_id)
         
         # Add user message to history
-        self.state.add_conversation_message(thread_id, email_body, sender="user")
+        self.state.add_conversation_message(
+            thread_id, email_body, sender="user", lead_email=sender_email
+        )
         
         # Get lead state
         lead_state = self.state.get_lead_state(sender_email)
@@ -627,8 +637,10 @@ class ASSCHOrchestrator:
                 }
             )
         
-        # Send reply via Smartlead
-        success = self.smartlead.send_reply(thread_id, reply_body)
+        # Send reply via outbound provider (Smartlead thread or Zoho Mail + recipient)
+        success = self.smartlead.send_reply(
+            thread_id, reply_body, recipient_email=sender_email
+        )
         
         if success:
             # Add agent reply to history
