@@ -62,19 +62,33 @@ class ApolloAgent:
     - bulk_enrich_organizations() uses v1/organizations/bulk_enrich (CONSUMES CREDITS)
     """
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """
         Initialize Apollo Agent.
         
         Args:
             api_key: Apollo API key (defaults to APOLLO_API_KEY env var)
+            base_url: API root including /v1 (overrides APOLLO_API_URL). Used by ServiceContainer
+                to point at mock_api_server.py when USE_MOCK_APIS is true.
         """
-        self.api_key = api_key or os.getenv("APOLLO_API_KEY")
+        use_mock = os.getenv("USE_MOCK_APIS", "false").lower() == "true"
+        self.api_key = api_key or os.getenv("APOLLO_API_KEY") or ""
         if not self.api_key:
-            raise ValueError("APOLLO_API_KEY not found in environment")
+            if use_mock:
+                # mock_api_server.py does not validate the key; value is for header shape only
+                self.api_key = "mock_apollo_key"
+            else:
+                raise ValueError("APOLLO_API_KEY not found in environment")
         
-        # Support mock API URL override
-        self.base_url = os.getenv("APOLLO_API_URL", "https://api.apollo.io/v1")
+        if base_url is not None:
+            self.base_url = base_url
+        elif os.getenv("APOLLO_API_URL"):
+            self.base_url = os.getenv("APOLLO_API_URL", "")
+        elif use_mock:
+            # Local FastAPI mock (see mock_api_server.py, default port 8001)
+            self.base_url = os.getenv("MOCK_API_URL", "http://localhost:8001").rstrip("/") + "/v1"
+        else:
+            self.base_url = "https://api.apollo.io/v1"
         if not self.base_url.endswith("/v1"):
             self.base_url = self.base_url.rstrip("/") + "/v1"
         self.headers = {
@@ -515,3 +529,312 @@ class ApolloAgent:
         except Exception as e:
             logger.warning(f"Failed to enrich lead {lead.email}: {e}. Returning lead as-is.")
             return lead
+    
+    def search_by_website(
+        self,
+        website: str,
+        limit: int = 10
+    ) -> List[Lead]:
+        """
+        Search Apollo.io for companies matching a website domain.
+        Used to find contact info for Wikidata entities.
+        
+        Uses: v1/mixed_companies/search (by domain)
+        Credit Consumption: May consume credits depending on your Apollo plan.
+        
+        Args:
+            website: Website URL (e.g., "https://example.com")
+            limit: Maximum results
+            
+        Returns:
+            List of Lead objects with contact information
+        """
+        # Extract domain from website
+        domain = website.replace("http://", "").replace("https://", "").split("/")[0]
+        
+        # Use Apollo's organization search by domain
+        url = f"{self.base_url}/mixed_companies/search"
+        
+        payload = {
+            "q_keywords": domain,
+            "page": 1,
+            "per_page": limit
+        }
+        
+        try:
+            logger.info(f"Apollo API: Searching by website domain: {domain}")
+            response = requests.post(url, json=payload, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            leads = []
+            organizations = data.get("organizations", [])
+            
+            for org in organizations[:limit]:
+                org_id = org.get("id")
+                if not org_id:
+                    continue
+                
+                # Get people at this organization
+                people = self._get_people_at_organization(org_id, limit=3)
+                
+                for person in people:
+                    lead = Lead(
+                        name=f"{person.get('first_name', '')} {person.get('last_name', '')}".strip(),
+                        email=person.get("email", ""),
+                        website=website,
+                        company_name=org.get("name", ""),
+                        specialty="",  # Will be filled from Wikidata
+                        location=f"{org.get('city', '')}, {org.get('state', '')}",
+                        metadata={
+                            "apollo_person_id": person.get("id"),
+                            "apollo_organization_id": org_id,
+                            "title": person.get("title", ""),
+                            "linkedin_url": person.get("linkedin_url", ""),
+                            "person_phone": person.get("phone_number", ""),
+                            "employee_count": org.get("estimated_num_employees", 0),
+                            "organization_name": org.get("name", ""),
+                            "organization_website": org.get("website_url", ""),
+                            "organization_phone": org.get("primary_phone", ""),
+                            "organization_city": org.get("city", ""),
+                            "organization_state": org.get("state", ""),
+                            "organization_country": org.get("country", ""),
+                            "organization_industry": org.get("industry", "")
+                        }
+                    )
+                    leads.append(lead)
+            
+            logger.info(f"Apollo API: Found {len(leads)} contacts for domain {domain}")
+            return leads
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Apollo API error searching by website: {e}")
+            if e.response is not None:
+                status_code = e.response.status_code
+                logger.error(f"Status Code: {status_code} - Body: {e.response.text}")
+            return []
+    
+    def _get_people_at_organization(self, org_id: str, limit: int = 3) -> List[Dict]:
+        """
+        Get people at an organization.
+        
+        Uses: v1/mixed_people/search
+        Credit Consumption: May consume credits depending on your Apollo plan.
+        
+        Args:
+            org_id: Apollo organization ID
+            limit: Maximum number of people to return
+            
+        Returns:
+            List of person dictionaries
+        """
+        url = f"{self.base_url}/mixed_people/search"
+        payload = {
+            "organization_ids": [org_id],
+            "person_titles": [
+                "Owner", "CEO", "Medical Director", "Practice Manager",
+                "Partner", "Managing Partner", "Principal", "Broker",
+                "Director", "Manager"
+            ],
+            "page": 1,
+            "per_page": limit
+        }
+        
+        try:
+            response = requests.post(url, json=payload, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("people", [])
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error getting people at organization {org_id}: {e}")
+            return []
+    
+    def search_real_estate_leads(
+        self,
+        geography: str,
+        min_employees: int = 10,
+        max_employees: int = 50,
+        limit: int = 50
+    ) -> List[Lead]:
+        """
+        Search for real estate marketing leads with optimized targeting.
+        
+        Args:
+            geography: Location filter (e.g., "Austin, TX")
+            min_employees: Minimum employee count (default: 10)
+            max_employees: Maximum employee count (default: 50)
+            limit: Maximum results to return
+            
+        Returns:
+            List of Lead objects for real estate agencies/brokerages
+        """
+        return self.search_leads(
+            geography=geography,
+            specialty="real estate marketing",
+            min_employees=min_employees,
+            max_employees=max_employees,
+            has_website=True,
+            limit=limit
+        )
+    
+    def search_medical_clinic_leads(
+        self,
+        geography: str,
+        specialty: str = "medical practice",
+        min_employees: int = 8,
+        max_employees: int = 30,
+        limit: int = 50
+    ) -> List[Lead]:
+        """
+        Search for medical clinic leads with optimized targeting.
+        
+        Args:
+            geography: Location filter (e.g., "New York, NY")
+            specialty: Medical specialty (e.g., "Dermatology", "Orthopedic")
+            min_employees: Minimum employee count (default: 8)
+            max_employees: Maximum employee count (default: 30)
+            limit: Maximum results to return
+            
+        Returns:
+            List of Lead objects for medical practices/clinics
+        """
+        return self.search_leads(
+            geography=geography,
+            specialty=specialty,
+            min_employees=min_employees,
+            max_employees=max_employees,
+            has_website=True,
+            limit=limit
+        )
+    
+    def search_legal_firm_leads(
+        self,
+        geography: str,
+        practice_area: str = "law firm",
+        min_employees: int = 5,
+        max_employees: int = 25,
+        limit: int = 50
+    ) -> List[Lead]:
+        """
+        Search for legal firm leads with optimized targeting.
+        
+        Args:
+            geography: Location filter (e.g., "New York, NY")
+            practice_area: Legal practice area (e.g., "Personal Injury", "Family Law")
+            min_employees: Minimum employee count (default: 5)
+            max_employees: Maximum employee count (default: 25)
+            limit: Maximum results to return
+            
+        Returns:
+            List of Lead objects for law firms/legal practices
+        """
+        return self.search_leads(
+            geography=geography,
+            specialty=practice_area,
+            min_employees=min_employees,
+            max_employees=max_employees,
+            has_website=True,
+            limit=limit
+        )
+    
+    def score_leads_by_market(self, leads: List[Lead], market: str) -> List[Lead]:
+        """
+        Score leads with market-specific criteria.
+        
+        Args:
+            leads: List of leads to score
+            market: "real_estate", "medical", or "legal"
+            
+        Returns:
+            Sorted list of leads (highest score first)
+        """
+        scored_leads = []
+        
+        for lead in leads:
+            score = 0
+            
+            # Base website score
+            if lead.website and lead.website.startswith("http"):
+                score += 10
+            
+            # Market-specific scoring
+            if market == "real_estate":
+                score += self._score_real_estate_lead(lead)
+            elif market == "medical":
+                score += self._score_medical_lead(lead)
+            elif market == "legal":
+                score += self._score_legal_lead(lead)
+            
+            # Title relevance
+            title_lower = lead.metadata.get("title", "").lower()
+            decision_maker_keywords = {
+                "real_estate": ["broker", "owner", "team lead", "marketing"],
+                "medical": ["director", "manager", "administrator"],
+                "legal": ["partner", "managing", "principal", "practitioner"]
+            }
+            
+            if any(kw in title_lower for kw in decision_maker_keywords.get(market, [])):
+                score += 5
+            
+            # Employee count sweet spot
+            emp_count = lead.metadata.get("employee_count", 0)
+            sweet_spots = {
+                "real_estate": (10, 50),
+                "medical": (8, 30),
+                "legal": (5, 25)
+            }
+            
+            min_emp, max_emp = sweet_spots.get(market, (5, 50))
+            if min_emp <= emp_count <= max_emp:
+                score += 5
+            
+            lead.metadata["score"] = score
+            lead.metadata["market"] = market
+            scored_leads.append(lead)
+        
+        scored_leads.sort(key=lambda x: x.metadata.get("score", 0), reverse=True)
+        return scored_leads
+    
+    def _score_real_estate_lead(self, lead: Lead) -> int:
+        """Score real estate lead with market-specific criteria."""
+        score = 0
+        org_industry = lead.metadata.get("organization_industry", "").lower()
+        
+        if "real estate" in org_industry:
+            score += 5
+        
+        # Check for growth indicators in metadata
+        if lead.metadata.get("employee_count", 0) >= 10:
+            score += 3
+        
+        return score
+    
+    def _score_medical_lead(self, lead: Lead) -> int:
+        """Score medical lead with market-specific criteria."""
+        score = 0
+        org_industry = lead.metadata.get("organization_industry", "").lower()
+        
+        if any(kw in org_industry for kw in ["medical", "health", "clinic", "practice"]):
+            score += 5
+        
+        # Specialty-specific bonus
+        specialty_keywords = ["dermatology", "orthopedic", "dental", "plastic surgery"]
+        if any(kw in lead.specialty.lower() for kw in specialty_keywords):
+            score += 3
+        
+        return score
+    
+    def _score_legal_lead(self, lead: Lead) -> int:
+        """Score legal lead with market-specific criteria."""
+        score = 0
+        org_industry = lead.metadata.get("organization_industry", "").lower()
+        
+        if any(kw in org_industry for kw in ["legal", "law", "attorney"]):
+            score += 5
+        
+        # Practice area bonus
+        practice_areas = ["personal injury", "family law", "criminal", "estate planning"]
+        if any(kw in lead.specialty.lower() for kw in practice_areas):
+            score += 3
+        
+        return score

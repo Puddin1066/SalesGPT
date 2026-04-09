@@ -3,7 +3,7 @@ Dependency Injection Container for SalesGPT.
 
 Manages service initialization and dependency wiring.
 """
-from typing import Optional
+from typing import Any, Optional
 
 from salesgpt.config import Settings, get_settings
 from salesgpt.db.connection import DatabaseManager
@@ -47,8 +47,60 @@ class ServiceContainer:
         self._state_manager = StateManager(self._db_manager)
         
         # Initialize services
-        self._apollo = ApolloAgent(api_key=self.settings.apollo_api_key)
-        self._smartlead = SmartleadAgent(api_key=self.settings.smartlead_api_key)
+        apollo_key = self.settings.apollo_api_key or None
+        if self.settings.use_mock_apis and not apollo_key:
+            apollo_key = "mock_apollo_key"
+        apollo_base = None
+        if self.settings.apollo_api_url:
+            apollo_base = self.settings.apollo_api_url.rstrip("/")
+            if not apollo_base.endswith("/v1"):
+                apollo_base = apollo_base + "/v1"
+        elif self.settings.use_mock_apis:
+            apollo_base = self.settings.mock_api_url.rstrip("/") + "/v1"
+        self._apollo = ApolloAgent(api_key=apollo_key, base_url=apollo_base)
+
+        if self.settings.use_zoho_stack:
+            from services.crm.zoho_crm_agent import ZohoCRMAgent
+            from services.outbound.zoho_mail_agent import ZohoMailAgent
+            from services.outbound.zoho_outbound_compat import ZohoOutboundCompat
+
+            self._crm = ZohoCRMAgent(
+                client_id=self.settings.zoho_client_id,
+                client_secret=self.settings.zoho_client_secret,
+                refresh_token=self.settings.zoho_refresh_token,
+                accounts_domain=self.settings.zoho_accounts_domain,
+                crm_api_base=self.settings.zoho_crm_api_base,
+            )
+            zoho_mail = ZohoMailAgent(
+                client_id=self.settings.zoho_client_id,
+                client_secret=self.settings.zoho_client_secret,
+                refresh_token=self.settings.zoho_refresh_token,
+                accounts_domain=self.settings.zoho_accounts_domain,
+                mail_api_base=self.settings.zoho_mail_api_base,
+                account_id=self.settings.zoho_mail_account_id,
+            )
+            from_addr = self.settings.smartlead_from_email
+            if not from_addr:
+                raise ValueError(
+                    "use_zoho_stack requires a sender address: set ZOHO_MAIL_FROM or OUTBOUND_FROM_EMAIL "
+                    "(or legacy SMARTLEAD_FROM_EMAIL)."
+                )
+            self._smartlead = ZohoOutboundCompat(
+                zoho_mail,
+                from_address=from_addr,
+                from_display_name=self.settings.smartlead_from_name,
+                send_delay_seconds=self.settings.zoho_mail_send_delay_seconds,
+            )
+        else:
+            api_key = self.settings.smartlead_api_key
+            if self.settings.use_mock_apis and not api_key:
+                api_key = "mock_smartlead_key"
+            if not api_key:
+                raise ValueError(
+                    "No outbound provider configured: set USE_ZOHO_STACK=true for Zoho Mail, "
+                    "or set SMARTLEAD_API_KEY, or USE_MOCK_APIS=true for local mocks."
+                )
+            self._smartlead = SmartleadAgent(api_key=api_key)
         
         # SalesGPT wrapper
         self._salesgpt = SalesGPTWrapper(
@@ -70,19 +122,18 @@ class ServiceContainer:
                 from unittest.mock import MagicMock
                 self._scheduler = MagicMock(spec=CalScheduler)
         
-        # HubSpot CRM
-        if (self.settings.hubspot_client_id and 
-            self.settings.hubspot_client_secret and 
-            self.settings.hubspot_refresh_token):
-            # Use OAuth
-            self._crm = HubSpotAgent(
-                client_id=self.settings.hubspot_client_id,
-                client_secret=self.settings.hubspot_client_secret,
-                refresh_token=self.settings.hubspot_refresh_token
-            )
-        else:
-            # Use Private App token
-            self._crm = HubSpotAgent(api_key=self.settings.hubspot_access_token)
+        # HubSpot CRM (skipped when Zoho stack is enabled)
+        if not self.settings.use_zoho_stack:
+            if (self.settings.hubspot_client_id and
+                    self.settings.hubspot_client_secret and
+                    self.settings.hubspot_refresh_token):
+                self._crm = HubSpotAgent(
+                    client_id=self.settings.hubspot_client_id,
+                    client_secret=self.settings.hubspot_client_secret,
+                    refresh_token=self.settings.hubspot_refresh_token
+                )
+            else:
+                self._crm = HubSpotAgent(api_key=self.settings.hubspot_access_token)
         
         # GEMflush visibility agent
         self._visibility = GEMflushAgent(
@@ -133,8 +184,8 @@ class ServiceContainer:
         return self._apollo
     
     @property
-    def smartlead(self) -> SmartleadAgent:
-        """Get Smartlead agent."""
+    def smartlead(self) -> Any:
+        """Smartlead API client or Zoho Mail compatibility adapter."""
         return self._smartlead
     
     @property
@@ -148,8 +199,8 @@ class ServiceContainer:
         return self._scheduler
     
     @property
-    def crm(self) -> HubSpotAgent:
-        """Get HubSpot CRM agent."""
+    def crm(self) -> Any:
+        """HubSpot or Zoho CRM agent (duck-typed create_contact, deals, stages)."""
         return self._crm
     
     @property
@@ -208,7 +259,8 @@ class ServiceContainer:
             scorer=self._scorer,
             state=self._state_manager,
             ab_manager=self._ab_test_manager,
-            apollo_ab=self._apollo_ab_manager
+            apollo_ab=self._apollo_ab_manager,
+            campaign_name=self.settings.smartlead_campaign_name,
         )
     
     def close(self):
